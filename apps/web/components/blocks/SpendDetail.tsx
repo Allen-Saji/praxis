@@ -6,6 +6,7 @@ import { Amount } from "@/components/data/Amount";
 import { BlobLink } from "@/components/data/BlobLink";
 import { SealBadge } from "@/components/data/SealBadge";
 import { StatusBadge } from "@/components/data/StatusBadge";
+import { RiskBadge } from "@/components/data/RiskBadge";
 import { RiskScore } from "@/components/data/RiskScore";
 import { RiskFlagList, PolicyViolationList } from "./RiskFlagList";
 import { BalanceChangeList } from "./BalanceChangeRow";
@@ -13,38 +14,53 @@ import { ReasoningChain } from "./ReasoningChain";
 import { DecryptControl } from "./DecryptControl";
 import { Section } from "./Section";
 import { absoluteTime, coinSymbol } from "@/lib/format";
-import { reasonPlain } from "@/lib/risk";
-import { suiscanUrl } from "@/lib/explorer";
-import type { SerializedReceipt, SerializedReasoningResult } from "@/lib/serialized";
+import { reasonPlain, scoreToBand } from "@/lib/risk";
+import { suiscanUrl, walrusBlobUrl } from "@/lib/explorer";
+import type { SerializedStreamEntry, SerializedReasoningResult } from "@/lib/serialized";
 
 /**
  * The full spend detail body, shared by SpendDrawer (right-side) and the
- * deep-linkable /app/spend/[id] route. Server-renders the public reasoning if
- * the blob is readable; if sealed, hands off to the client DecryptControl gated
- * by the connected viewer. Maps one-to-one to DESIGN.md section 11.
+ * deep-linkable /app/spend/[id] route. Renders both confirmed spends and aborted
+ * ones from a unified stream entry. Confirmed entries carry a receipt object;
+ * aborts source everything from the Walrus reasoning blob. Server-renders public
+ * reasoning if readable; if sealed, hands off to the client DecryptControl gated
+ * by the connected viewer. Maps to DESIGN.md sections 5 and 11.
  */
 export function SpendDetail({
-  receipt,
+  entry,
   reasoning,
 }: {
-  receipt: SerializedReceipt;
+  entry: SerializedStreamEntry;
   reasoning: SerializedReasoningResult;
 }) {
   const blob = !reasoning.sealed ? reasoning.reasoning : null;
   const recommendation = blob?.simulation.recommendation;
-  const abortReason = blob?.abortReason ?? null;
+  const aborted = entry.status === "aborted";
+  // The reason an abort was blocked: from the entry (event label) first, then the
+  // decoded blob if the entry did not carry it (e.g. a sealed-then-revealed abort).
+  const abortReason = entry.abortReason ?? blob?.abortReason ?? null;
 
   return (
     <div className="flex flex-col gap-6">
+      {aborted ? (
+        <div className="flex items-start gap-3 rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel-2)] px-4 py-3">
+          <StatusBadge status="aborted" />
+          <p className="text-[13px] leading-[20px] text-[var(--text-mid)]">
+            Praxis blocked this spend before it signed.
+            {abortReason ? ` ${reasonPlain(abortReason)}` : ""}
+          </p>
+        </div>
+      ) : null}
+
       {/* Intent */}
       <Section title="Intent">
         <div className="grid gap-x-8 gap-y-0 sm:grid-cols-2">
           <KeyValueList>
             <KeyValueRow label="Agent">
-              <Address value={receipt.agent} kind="account" />
+              <Address value={entry.agent} kind="account" />
             </KeyValueRow>
             <KeyValueRow label="Recipient">
-              <Address value={receipt.recipient} kind="account" />
+              <Address value={entry.recipient} kind="account" />
             </KeyValueRow>
             <KeyValueRow label="Coin">
               <span className="font-mono text-[14px] text-[var(--text-mid)]">
@@ -54,14 +70,14 @@ export function SpendDetail({
           </KeyValueList>
           <KeyValueList>
             <KeyValueRow label="Wallet">
-              <Address value={receipt.wallet} kind="account" />
+              <Address value={entry.wallet} kind="account" />
             </KeyValueRow>
             <KeyValueRow label="Amount">
-              <Amount mist={receipt.amount} />
+              <Amount mist={entry.amount} />
             </KeyValueRow>
             <KeyValueRow label="Time">
               <span className="font-mono text-[13px] text-[var(--text-mid)]">
-                {absoluteTime(receipt.timestampMs)}
+                {absoluteTime(entry.timestampMs)}
               </span>
             </KeyValueRow>
           </KeyValueList>
@@ -69,12 +85,9 @@ export function SpendDetail({
       </Section>
 
       {/* Reasoning chain */}
-      <Section
-        title="Reasoning chain"
-        aside={<SealBadge sealed={receipt.sealed} />}
-      >
+      <Section title="Reasoning chain" aside={<SealBadge sealed={entry.sealed} />}>
         {reasoning.sealed ? (
-          <DecryptControl blobId={receipt.blobId} auditorCount={reasoning.auditors.length} />
+          <DecryptControl blobId={entry.blobId} auditorCount={reasoning.auditors.length} />
         ) : blob ? (
           <ReasoningChain reasoning={blob} />
         ) : (
@@ -146,11 +159,13 @@ export function SpendDetail({
       {/* On-chain + audit */}
       <Section title="On-chain + audit">
         <KeyValueList>
-          <KeyValueRow label="Receipt object">
-            <Address value={receipt.receiptId} kind="object" />
-          </KeyValueRow>
+          {entry.receiptId ? (
+            <KeyValueRow label="Receipt object">
+              <Address value={entry.receiptId} kind="object" />
+            </KeyValueRow>
+          ) : null}
           <KeyValueRow label="Walrus blob">
-            <BlobLink blobId={receipt.blobId} />
+            <BlobLink blobId={entry.blobId} />
           </KeyValueRow>
           {blob ? (
             <KeyValueRow label="blake3">
@@ -158,7 +173,7 @@ export function SpendDetail({
             </KeyValueRow>
           ) : null}
         </KeyValueList>
-        {abortReason ? (
+        {aborted && abortReason ? (
           <p className="mt-3 rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[13px] leading-[20px] text-[var(--text-mid)]">
             Praxis blocked this spend. {reasonPlain(abortReason)}
           </p>
@@ -168,20 +183,31 @@ export function SpendDetail({
   );
 }
 
-/** Header line for the detail body. */
-export function SpendDetailHeader({ receipt }: { receipt: SerializedReceipt }) {
+/** Header line for the detail body. Confirmed links to Suiscan; aborts link to the Walrus blob. */
+export function SpendDetailHeader({ entry }: { entry: SerializedStreamEntry }) {
+  const aborted = entry.status === "aborted";
+  const idValue = entry.receiptId ?? entry.blobId;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <h2 className="text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">Spend</h2>
-      <Address value={receipt.receiptId} kind="object" head={6} tail={4} />
-      <StatusBadge status={receipt.status} />
+      {entry.receiptId ? (
+        <Address value={entry.receiptId} kind="object" head={6} tail={4} />
+      ) : (
+        <BlobLink blobId={entry.blobId} />
+      )}
+      <StatusBadge status={entry.status} />
+      {aborted ? <RiskBadge level={scoreToBand(entry.riskScore)} showLabel={false} /> : null}
       <Link
-        href={suiscanUrl("object", receipt.receiptId)}
+        href={
+          entry.receiptId
+            ? suiscanUrl("object", idValue)
+            : walrusBlobUrl(entry.blobId)
+        }
         target="_blank"
         rel="noopener noreferrer"
         className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
       >
-        Suiscan
+        {entry.receiptId ? "Suiscan" : "Walrus"}
         <ExternalLink className="h-3.5 w-3.5" />
       </Link>
     </div>
@@ -201,7 +227,7 @@ function BlobUnreachable() {
     <div className="flex items-start gap-3 rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
       <FileWarning className="mt-0.5 h-4 w-4 shrink-0 text-[var(--risk-medium)]" />
       <p className="text-[13px] leading-[20px] text-[var(--text-mid)]">
-        Could not load the reasoning blob from Walrus. The on-chain receipt is still valid; retry
+        Could not load the reasoning blob from Walrus. The on-chain record is still valid; retry
         the blob fetch.
       </p>
     </div>

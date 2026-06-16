@@ -4,6 +4,7 @@ import {
   PraxisReader,
   type ReceiptEvent,
   type AbortEvent,
+  type StreamEntry,
   type ReasoningBlob,
 } from "@praxis/sdk";
 import { bytesToString } from "./format";
@@ -11,6 +12,7 @@ import { reasonCodeLabel, scoreToBand } from "./risk";
 import type {
   SerializedReceipt,
   SerializedAbort,
+  SerializedStreamEntry,
   SerializedIndexStats,
   SerializedAgent,
   SerializedReasoning,
@@ -74,18 +76,6 @@ export async function getIndexStats(): Promise<SerializedIndexStats> {
   return { totalCount: s.totalCount, totalAborts: s.totalAborts, abortRate: s.abortRate };
 }
 
-/** Recent receipts, newest first. Aborts cross-referenced for status. */
-export async function getRecentReceipts(limit = 50): Promise<SerializedReceipt[]> {
-  const r = getReader();
-  const [receipts, aborts] = await Promise.all([r.recent(limit), r.aborts(limit)]);
-  // Aborts do not carry a receipt id, so we cannot match by id. A blocked spend
-  // never produces a SpendingReceiptCreated event (it never signs), so the
-  // receipt stream is confirmed-only. The abort feed is its own surface.
-  void aborts;
-  const abortedSet = new Set<string>();
-  return receipts.map((e) => serializeReceipt(e, abortedSet));
-}
-
 export async function getReceiptsByAgent(
   agent: string,
   limit = 200,
@@ -93,6 +83,33 @@ export async function getReceiptsByAgent(
   const events = await getReader().byAgent(agent, limit);
   const abortedSet = new Set<string>();
   return events.map((e) => serializeReceipt(e, abortedSet));
+}
+
+function serializeStreamEntry(e: StreamEntry): SerializedStreamEntry {
+  return {
+    kind: e.kind,
+    status: e.status,
+    agent: e.agent,
+    wallet: e.wallet,
+    recipient: e.recipient,
+    amount: String(e.amount),
+    riskScore: Number(e.risk_score),
+    sealed: Boolean(e.sealed),
+    blobId: bytesToString(e.walrus_blob_id),
+    timestampMs: Number(e.timestamp_ms),
+    receiptId: e.receipt_id,
+    abortReason: e.abort_reason,
+  };
+}
+
+/**
+ * The unified spend stream: confirmed and aborted spends interleaved by time,
+ * newest first. Backed by PraxisReader.stream(). This is the main feed; aborts
+ * are first-class rows here, not a separate surface (DESIGN.md section 5).
+ */
+export async function getStream(limit = 50): Promise<SerializedStreamEntry[]> {
+  const entries = await getReader().stream(limit);
+  return entries.map(serializeStreamEntry);
 }
 
 /**
@@ -135,6 +152,81 @@ export async function getReceiptById(receiptId: string): Promise<SerializedRecei
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve a deep-link id to a unified stream entry plus its reasoning blob,
+ * branching on what the id is:
+ *  - a Sui object id (0x-prefixed) is a confirmed-spend receipt. Read the receipt
+ *    object, then its reasoning blob.
+ *  - anything else is treated as a Walrus blob id for an aborted spend (aborts
+ *    carry no receipt id). Read the reasoning blob and build the entry from it.
+ * Returns null when neither resolves, so the route can render not-found.
+ */
+export async function getSpendDetail(
+  id: string,
+): Promise<{ entry: SerializedStreamEntry; reasoning: SerializedReasoningResult } | null> {
+  // Confirmed path: a 0x-prefixed id is a receipt object.
+  if (id.startsWith("0x")) {
+    const receipt = await getReceiptById(id);
+    if (receipt) {
+      const reasoning = await getReasoning(receipt.blobId);
+      const entry: SerializedStreamEntry = {
+        kind: "spend",
+        status: "confirmed",
+        agent: receipt.agent,
+        wallet: receipt.wallet,
+        recipient: receipt.recipient,
+        amount: receipt.amount,
+        riskScore: receipt.riskScore,
+        sealed: receipt.sealed,
+        blobId: receipt.blobId,
+        timestampMs: receipt.timestampMs,
+        receiptId: receipt.receiptId,
+      };
+      return { entry, reasoning };
+    }
+    // A 0x id that is not a Praxis receipt resolves to nothing.
+    return null;
+  }
+
+  // Abort path: treat the id as a Walrus blob id and source detail from the blob.
+  const reasoning = await getReasoning(id);
+  if (reasoning.sealed) {
+    // Sealed abort blob: we cannot read intent server-side, but the entry can
+    // still render its header and gate the reveal to an allowlisted viewer.
+    const entry: SerializedStreamEntry = {
+      kind: "abort",
+      status: "aborted",
+      agent: "",
+      wallet: "",
+      recipient: "",
+      amount: "0",
+      riskScore: 0,
+      sealed: true,
+      blobId: id,
+      timestampMs: 0,
+    };
+    return { entry, reasoning };
+  }
+  if (reasoning.reasoning && reasoning.reasoning.outcome === "aborted") {
+    const r = reasoning.reasoning;
+    const entry: SerializedStreamEntry = {
+      kind: "abort",
+      status: "aborted",
+      agent: r.agent,
+      wallet: r.wallet,
+      recipient: r.intent.to,
+      amount: r.intent.amount,
+      riskScore: r.simulation.riskScore,
+      sealed: false,
+      blobId: id,
+      timestampMs: r.ts,
+      abortReason: r.abortReason ?? undefined,
+    };
+    return { entry, reasoning };
+  }
+  return null;
 }
 
 export async function getRecentAborts(limit = 100): Promise<SerializedAbort[]> {

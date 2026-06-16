@@ -3,16 +3,16 @@ import { StatHeader } from "@/components/blocks/StatHeader";
 import { AgentCard } from "@/components/blocks/AgentCard";
 import { LiveSpendStream } from "@/components/blocks/LiveSpendStream";
 import { EmptyState } from "@/components/blocks/EmptyState";
-import { getIndexStats, getRecentReceipts, getAgents } from "@/lib/praxis.server";
+import { getIndexStats, getStream, getAgents } from "@/lib/praxis.server";
 import { INSTALL_SPEND_SNIPPET } from "@/lib/snippets";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardHome() {
   // All reads run server-side via PraxisReader, serialized to plain props.
-  const [stats, receipts, agents] = await Promise.all([
+  const [stats, stream, agents] = await Promise.all([
     getIndexStats(),
-    getRecentReceipts(50),
+    getStream(50),
     getAgents(200),
   ]);
 
@@ -47,7 +47,7 @@ export default async function DashboardHome() {
         )}
       </section>
 
-      <LiveSpendStream initial={receipts} />
+      <LiveSpendStream initial={stream} />
     </div>
   );
 }

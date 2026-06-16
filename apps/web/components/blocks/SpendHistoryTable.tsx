@@ -12,8 +12,9 @@ import { StatusBadge } from "@/components/data/StatusBadge";
 import { SealBadge } from "@/components/data/SealBadge";
 import { Timestamp } from "@/components/data/Timestamp";
 import { withThousands } from "@/lib/format";
+import { receiptToEntry } from "@/lib/stream";
 import { INSTALL_SPEND_SNIPPET } from "@/lib/snippets";
-import type { SerializedReceipt } from "@/lib/serialized";
+import type { SerializedReceipt, SerializedStreamEntry } from "@/lib/serialized";
 
 /**
  * A static spend-history table (no polling) used on the agent profile. Clicking
@@ -21,7 +22,7 @@ import type { SerializedReceipt } from "@/lib/serialized";
  * column the dashboard stream omits.
  */
 export function SpendHistoryTable({ receipts }: { receipts: SerializedReceipt[] }) {
-  const [selected, setSelected] = useState<SerializedReceipt | null>(null);
+  const [selected, setSelected] = useState<SerializedStreamEntry | null>(null);
   const [open, setOpen] = useState(false);
 
   const columns: Column<SerializedReceipt>[] = [
@@ -88,7 +89,7 @@ export function SpendHistoryTable({ receipts }: { receipts: SerializedReceipt[] 
         rows={receipts}
         getRowKey={(r) => r.receiptId}
         onRowClick={(r) => {
-          setSelected(r);
+          setSelected(receiptToEntry(r));
           setOpen(true);
         }}
         initialSort={{ columnId: "time", dir: "desc" }}
@@ -101,7 +102,7 @@ export function SpendHistoryTable({ receipts }: { receipts: SerializedReceipt[] 
           />
         }
       />
-      <SpendDrawer receipt={selected} open={open} onOpenChange={setOpen} />
+      <SpendDrawer entry={selected} open={open} onOpenChange={setOpen} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { SpendDetail, SpendDetailHeader } from "@/components/blocks/SpendDetail";
-import { getReceiptById, getReasoning } from "@/lib/praxis.server";
+import { getSpendDetail } from "@/lib/praxis.server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,21 +10,21 @@ export default async function SpendDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const receiptId = decodeURIComponent(id);
+  const decodedId = decodeURIComponent(id);
 
-  const receipt = await getReceiptById(receiptId);
-  if (!receipt) {
+  // The id is either a receipt object id (confirmed spend) or a Walrus blob id
+  // (aborted spend, which has no receipt). getSpendDetail detects and branches,
+  // so deep links keep working for both. Sealed blobs return a marker; the
+  // client DecryptControl gates the reveal by the connected viewer.
+  const detail = await getSpendDetail(decodedId);
+  if (!detail) {
     notFound();
   }
 
-  // Reasoning is fetched here too. Sealed blobs return a marker and the client
-  // DecryptControl gates the reveal by the connected viewer.
-  const reasoning = await getReasoning(receipt.blobId);
-
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-6">
-      <SpendDetailHeader receipt={receipt} />
-      <SpendDetail receipt={receipt} reasoning={reasoning} />
+      <SpendDetailHeader entry={detail.entry} />
+      <SpendDetail entry={detail.entry} reasoning={detail.reasoning} />
     </div>
   );
 }

@@ -44,6 +44,31 @@ export interface SerializedAbort {
   timestampMs: number;
 }
 
+/**
+ * One row of the unified spend stream, ready for the client. Mirrors the SDK
+ * StreamEntry: a confirmed spend OR a blocked one, interleaved by time. Confirmed
+ * rows carry a receiptId; aborted rows carry an abortReason and resolve their
+ * detail from the Walrus reasoning blob instead of a receipt object.
+ */
+export interface SerializedStreamEntry {
+  kind: "spend" | "abort";
+  status: "confirmed" | "aborted";
+  agent: string;
+  wallet: string;
+  recipient: string;
+  /** MIST as a decimal string. */
+  amount: string;
+  riskScore: number;
+  sealed: boolean;
+  /** Decoded Walrus blob id (utf-8). */
+  blobId: string;
+  timestampMs: number;
+  /** Present on confirmed spends. The deep-link key for the detail route. */
+  receiptId?: string;
+  /** Present on aborts. Raw abort-reason label from the event. */
+  abortReason?: string;
+}
+
 export interface SerializedIndexStats {
   totalCount: number;
   totalAborts: number;

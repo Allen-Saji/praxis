@@ -9,8 +9,8 @@ export default function SpendNotFound() {
       </span>
       <h1 className="text-[20px] font-semibold text-[var(--text-hi)]">Spend not found</h1>
       <p className="text-[14px] leading-[20px] text-[var(--text-mid)]">
-        No Praxis receipt resolves to that id on testnet. It may be from another network or not be
-        a receipt object.
+        Nothing resolves to that id on testnet. It is neither a Praxis receipt object nor a Walrus
+        reasoning blob for a blocked spend. It may be from another network.
       </p>
       <Link
         href="/app"
