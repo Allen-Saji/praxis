@@ -4,6 +4,7 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { hexToBytes } from "@noble/hashes/utils.js";
 import { blake3Hex, canonicalize } from "./canonical";
 import { DEPLOYMENTS, SUI_TYPE, WALRUS_ENDPOINTS, type Deployment } from "./config";
+import { PraxisReader } from "./reader";
 import { assessRisk } from "./risk";
 import { LocalSealer, type SealedBlob, type Sealer } from "./seal";
 import { WalrusStore } from "./walrus";
@@ -47,6 +48,8 @@ export class Praxis {
   readonly network: Network;
   readonly client: SuiJsonRpcClient;
   readonly deployment: Deployment;
+  /** Read-only data surface; the dashboard can use the same class directly. */
+  readonly reader: PraxisReader;
   private wallet: WalletAdapter;
   private policy?: SpendingPolicy;
   private walrus: WalrusStore;
@@ -70,6 +73,18 @@ export class Praxis {
       localFallbackDir: opts.walrus?.localFallbackDir ?? ".praxis/blobs",
     });
     this.sealer = opts.sealer ?? new LocalSealer(opts.sealSecret ?? "praxis-dev-seal-secret");
+    this.reader = new PraxisReader({
+      network: this.network,
+      client: this.client,
+      deployment: this.deployment,
+      walrusStore: this.walrus,
+      sealer: this.sealer,
+    });
+  }
+
+  /** Read-only audit surface: counters, receipt/abort events, and Seal reveal. */
+  get audit(): PraxisReader {
+    return this.reader;
   }
 
   /** Simulate a spend and return the risk report. No signing, no logging. */
@@ -151,32 +166,6 @@ export class Praxis {
       simulationReport: report,
     };
   }
-
-  audit = {
-    /** Decrypt a sealed reasoning blob if the viewer is allowlisted. */
-    reveal: async (blobId: string, viewer: string): Promise<ReasoningBlob> => {
-      const raw = await this.walrus.readJson<SealedBlob | ReasoningBlob>(blobId);
-      if (isSealed(raw)) {
-        const plaintext = await this.sealer.reveal(raw, viewer);
-        return JSON.parse(new TextDecoder().decode(plaintext)) as ReasoningBlob;
-      }
-      return raw;
-    },
-    /** Recent receipts, read from on-chain SpendingReceiptCreated events. */
-    recent: async (limit = 50): Promise<ReceiptEvent[]> => {
-      const events = await this.client.queryEvents({
-        query: { MoveEventType: `${this.deployment.packageId}::spending_receipt::SpendingReceiptCreated` },
-        limit,
-        order: "descending",
-      });
-      return events.data.map((e) => e.parsedJson as ReceiptEvent);
-    },
-    byAgent: async (agent: string, limit = 200): Promise<ReceiptEvent[]> => {
-      const all = await this.audit.recent(limit);
-      const target = normalizeSuiAddress(agent);
-      return all.filter((r) => safeNorm(r.agent) === target);
-    },
-  };
 
   // === internals ===
 
@@ -375,39 +364,14 @@ export class Praxis {
   }
 }
 
-export interface ReceiptEvent {
-  receipt_id: string;
-  agent: string;
-  wallet: string;
-  recipient: string;
-  amount: string;
-  risk_score: number;
-  sim_passed: boolean;
-  sealed: boolean;
-  walrus_blob_id: number[];
-  timestamp_ms: string;
-}
-
 function assertSui(coinType: string): void {
   if (coinType !== SUI_TYPE) {
     throw new Error(`V1 supports SUI spends only (got ${coinType}); multi-coin is post-hackathon.`);
   }
 }
 
-function isSealed(v: SealedBlob | ReasoningBlob): v is SealedBlob {
-  return (v as SealedBlob).sealed === true;
-}
-
 function utf8Bytes(s: string): number[] {
   return Array.from(new TextEncoder().encode(s));
-}
-
-function safeNorm(a: string): string {
-  try {
-    return normalizeSuiAddress(a);
-  } catch {
-    return a;
-  }
 }
 
 function ownerAddress(owner: unknown): string {

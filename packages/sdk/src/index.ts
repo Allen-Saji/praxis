@@ -1,4 +1,12 @@
-export { Praxis, type PraxisOptions, type ReceiptEvent } from "./client";
+export { Praxis, type PraxisOptions } from "./client";
+export {
+  PraxisReader,
+  type PraxisReaderOptions,
+  type ReceiptEvent,
+  type AbortEvent,
+  type IndexStats,
+  type ReasoningResult,
+} from "./reader";
 export { KeypairAdapter, GenericAdapter, type GenericAdapterOptions } from "./adapters";
 export { assessRisk, type RiskInput, type RiskOutput } from "./risk";
 export { WalrusStore, type WalrusStoreOptions, type WriteResult } from "./walrus";
