@@ -1,0 +1,20 @@
+{
+  "name": "@praxis/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sample AI agents that spend through Praxis (researcher, trader, attacker)",
+  "scripts": {
+    "start": "tsx src/run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mysten/sui": "^2.18.0",
+    "@praxis/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
