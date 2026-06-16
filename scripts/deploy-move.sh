@@ -12,6 +12,11 @@ echo "Publishing praxis_core to ${NETWORK}..."
 mkdir -p deployments
 RAW="deployments/${NETWORK}.publish.json"
 
+# Always publish a fresh package. The CLI records publications in Published.toml
+# and refuses to re-publish; our schema changes are breaking (not upgrade-safe),
+# so we drop the recorded entry and mint a new package each deploy.
+rm -f move/praxis_core/Published.toml
+
 sui client publish ./move/praxis_core --json --gas-budget 200000000 >"$RAW"
 
 # Sui CLI >= 1.7x emits a protobuf-style response keyed on `changed_objects`

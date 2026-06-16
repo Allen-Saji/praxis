@@ -85,8 +85,8 @@ fun record_abort_increments_counter() {
         let mut index = s.take_shared<AgentIndex>();
         let clock = clock::create_for_testing(s.ctx());
 
-        agent_registry::record_abort(&mut index, AGENT, b"abort_blob", 2, 95, &clock, s.ctx());
-        agent_registry::record_abort(&mut index, AGENT, b"abort_blob_2", 0, 50, &clock, s.ctx());
+        agent_registry::record_abort(&mut index, AGENT, RECIP, 1_000, b"abort_blob", 2, 95, &clock, s.ctx());
+        agent_registry::record_abort(&mut index, AGENT, RECIP, 500, b"abort_blob_2", 0, 50, &clock, s.ctx());
 
         assert!(agent_registry::total_aborts(&index) == 2, 0);
         assert!(agent_registry::total_count(&index) == 0, 1);

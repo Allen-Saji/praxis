@@ -27,6 +27,9 @@ public struct AgentIndex has key {
 public struct AbortRecorded has copy, drop {
     agent: address,
     wallet: address,
+    /// The spend that was blocked, so aborts can sit in the same stream as confirms.
+    recipient: address,
+    amount: u64,
     /// Walrus blob holding the reasoning + sim report for the blocked spend.
     walrus_blob_id: vector<u8>,
     /// 0 = agent_decision, 1 = policy_block, 2 = high_risk, 3 = sim_failed.
@@ -70,6 +73,8 @@ public(package) fun register(
 public fun record_abort(
     index: &mut AgentIndex,
     agent: address,
+    recipient: address,
+    amount: u64,
     walrus_blob_id: vector<u8>,
     reason_code: u8,
     risk_score: u8,
@@ -80,6 +85,8 @@ public fun record_abort(
     event::emit(AbortRecorded {
         agent,
         wallet: ctx.sender(),
+        recipient,
+        amount,
         walrus_blob_id,
         reason_code,
         risk_score,
