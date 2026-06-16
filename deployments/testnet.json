@@ -1,0 +1,7 @@
+{
+  "network": "testnet",
+  "packageId": "0xb9e95d52354fc86c1d85ed58f7d8b7e90c76347961da16cc6e95845e9b56e32d",
+  "agentIndexId": "0x42780ec3caadec6c9aaea33d9aee857c40dbf86edefadeaeebff7b01187069d7",
+  "upgradeCapId": "0x8190b3e7127db97119554712b989e8379fc2961e2032bf8d19e6a5b2ab232fb6",
+  "clockId": "0x6"
+}
