@@ -1,0 +1,225 @@
+@import "tailwindcss";
+
+/*
+  Praxis design tokens. Per the Tailwind v4 gotcha (DESIGN.md section 10), tokens
+  are declared in @theme so utilities generate (bg-bg, text-text-hi, etc.), AND
+  mirrored as short aliases in :root so inline var(--risk-critical) resolves. A
+  plain :root token block alone gets stripped at compile time.
+
+  Dark mode is the default and only theme for v1 (DESIGN.md section 5).
+*/
+
+@theme {
+  /* Neutrals: the quiet field */
+  --color-bg: #0a0b0d;
+  --color-panel: #121316;
+  --color-panel-2: #16181c;
+  --color-border: #23262b;
+  --color-border-hi: #33373d;
+  --color-text-hi: #e6e8eb;
+  --color-text-mid: #9ba1a8;
+  --color-text-low: #6b7177;
+
+  /* Accent: Sui blue, used sparingly */
+  --color-accent: #00d2ff;
+  --color-accent-quiet: #3dc8f0;
+
+  /* Risk levels: the four semantic colors */
+  --color-risk-low: #4ade80;
+  --color-risk-medium: #fbbf24;
+  --color-risk-high: #fb923c;
+  --color-risk-critical: #f4516c;
+
+  /* Radius scale */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Fonts wired by next/font in layout.tsx */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "JetBrains Mono", monospace;
+}
+
+/*
+  Short aliases for inline var() usage (focus rings, tints, segmented bars). These
+  mirror the @theme values above.
+*/
+:root {
+  --bg: #0a0b0d;
+  --panel: #121316;
+  --panel-2: #16181c;
+  --border: #23262b;
+  --border-hi: #33373d;
+  --text-hi: #e6e8eb;
+  --text-mid: #9ba1a8;
+  --text-low: #6b7177;
+
+  --accent: #00d2ff;
+  --accent-quiet: #3dc8f0;
+  --accent-tint: rgba(0, 210, 255, 0.12);
+
+  --risk-low: #4ade80;
+  --risk-medium: #fbbf24;
+  --risk-high: #fb923c;
+  --risk-critical: #f4516c;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* z-index scale (DESIGN.md / ux z-index-management) */
+  --z-nav: 30;
+  --z-drawer: 40;
+  --z-palette: 50;
+
+  color-scheme: dark;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  background-color: var(--bg);
+  color: var(--text-hi);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-hi);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  font-feature-settings: "cv01", "cv02";
+}
+
+/* Mono numerics line up by place value */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Accent focus ring used across interactive elements */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Custom selection in brand accent */
+::selection {
+  background: var(--accent-tint);
+  color: var(--text-hi);
+}
+
+/* Scrollbars tuned to the dark field */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hi) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-hi);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Live dot pulse, gated on reduced-motion */
+@keyframes praxis-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.live-dot {
+  animation: praxis-pulse 1.6s ease-in-out infinite;
+}
+
+/* New-row insertion in the live stream: fade + 8px slide, 200ms */
+@keyframes praxis-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.row-enter {
+  animation: praxis-row-in 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Drawer slide from right, 280ms */
+@keyframes praxis-drawer-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.drawer-enter {
+  animation: praxis-drawer-in 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes praxis-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.overlay-enter {
+  animation: praxis-fade-in 200ms ease-out;
+}
+
+/* Landing hero staggered reveal, 400ms cap */
+@keyframes praxis-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  opacity: 0;
+  animation: praxis-rise 400ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .rise {
+    opacity: 1;
+    transform: none;
+  }
+  .live-dot {
+    animation: none;
+  }
+}

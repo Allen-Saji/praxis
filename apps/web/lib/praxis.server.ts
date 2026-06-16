@@ -1,0 +1,286 @@
+import "server-only";
+
+import {
+  PraxisReader,
+  type ReceiptEvent,
+  type AbortEvent,
+  type ReasoningBlob,
+} from "@praxis/sdk";
+import { bytesToString } from "./format";
+import { reasonCodeLabel, scoreToBand } from "./risk";
+import type {
+  SerializedReceipt,
+  SerializedAbort,
+  SerializedIndexStats,
+  SerializedAgent,
+  SerializedReasoning,
+  SerializedReasoningResult,
+  DecryptResult,
+} from "./serialized";
+
+/**
+ * Server-only Praxis data layer. The ONLY module that imports @praxis/sdk.
+ * Everything here runs in Server Components, route handlers, or server actions.
+ * It reads live testnet data and returns flat, JSON-safe objects (every bigint
+ * already a string, every blob-id byte array already decoded). The seal master
+ * secret stays in this process; the dashboard default secret decrypts the blobs
+ * the agents already sealed, so we never override `sealSecret`.
+ */
+
+let reader: PraxisReader | null = null;
+
+function getReader(): PraxisReader {
+  if (!reader) {
+    reader = new PraxisReader({ network: "testnet" });
+  }
+  return reader;
+}
+
+function normalize(addr: string): string {
+  return addr.toLowerCase();
+}
+
+function serializeReceipt(e: ReceiptEvent, abortedSet: Set<string>): SerializedReceipt {
+  const receiptId = e.receipt_id;
+  return {
+    receiptId,
+    agent: e.agent,
+    wallet: e.wallet,
+    recipient: e.recipient,
+    amount: String(e.amount),
+    riskScore: Number(e.risk_score),
+    simPassed: Boolean(e.sim_passed),
+    sealed: Boolean(e.sealed),
+    blobId: bytesToString(e.walrus_blob_id),
+    timestampMs: Number(e.timestamp_ms),
+    status: abortedSet.has(receiptId) ? "aborted" : "confirmed",
+  };
+}
+
+function serializeAbort(e: AbortEvent): SerializedAbort {
+  return {
+    agent: e.agent,
+    wallet: e.wallet,
+    blobId: bytesToString(e.walrus_blob_id),
+    reasonCode: Number(e.reason_code),
+    reasonLabel: reasonCodeLabel(Number(e.reason_code)),
+    riskScore: Number(e.risk_score),
+    timestampMs: Number(e.timestamp_ms),
+  };
+}
+
+export async function getIndexStats(): Promise<SerializedIndexStats> {
+  const s = await getReader().indexStats();
+  return { totalCount: s.totalCount, totalAborts: s.totalAborts, abortRate: s.abortRate };
+}
+
+/** Recent receipts, newest first. Aborts cross-referenced for status. */
+export async function getRecentReceipts(limit = 50): Promise<SerializedReceipt[]> {
+  const r = getReader();
+  const [receipts, aborts] = await Promise.all([r.recent(limit), r.aborts(limit)]);
+  // Aborts do not carry a receipt id, so we cannot match by id. A blocked spend
+  // never produces a SpendingReceiptCreated event (it never signs), so the
+  // receipt stream is confirmed-only. The abort feed is its own surface.
+  void aborts;
+  const abortedSet = new Set<string>();
+  return receipts.map((e) => serializeReceipt(e, abortedSet));
+}
+
+export async function getReceiptsByAgent(
+  agent: string,
+  limit = 200,
+): Promise<SerializedReceipt[]> {
+  const events = await getReader().byAgent(agent, limit);
+  const abortedSet = new Set<string>();
+  return events.map((e) => serializeReceipt(e, abortedSet));
+}
+
+/**
+ * Read a single receipt directly from its on-chain object, so the
+ * /app/spend/[id] route is deep-linkable even when the receipt is older than the
+ * recent-event window. `sealed` is derived from a non-empty seal_policy_id (the
+ * object carries no explicit sealed flag; the event does). Returns null if the
+ * id is not a Praxis receipt.
+ */
+export async function getReceiptById(receiptId: string): Promise<SerializedReceipt | null> {
+  try {
+    const obj = await getReader().client.getObject({
+      id: receiptId,
+      options: { showContent: true },
+    });
+    const content = obj.data?.content as
+      | { dataType?: string; fields?: Record<string, unknown> }
+      | undefined;
+    const fields = content?.fields;
+    if (!fields || content?.dataType !== "moveObject") return null;
+
+    const blobBytes = fields.walrus_blob_id;
+    const blobId = Array.isArray(blobBytes) ? bytesToString(blobBytes as number[]) : "";
+    const sealPolicy = fields.seal_policy_id;
+    const sealed = Array.isArray(sealPolicy) && sealPolicy.length > 0;
+
+    return {
+      receiptId,
+      agent: String(fields.agent ?? ""),
+      wallet: String(fields.wallet ?? ""),
+      recipient: String(fields.recipient ?? ""),
+      amount: String(fields.amount ?? "0"),
+      riskScore: Number(fields.risk_score ?? 0),
+      simPassed: Boolean(fields.sim_passed),
+      sealed,
+      blobId,
+      timestampMs: Number(fields.timestamp_ms ?? 0),
+      status: "confirmed",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getRecentAborts(limit = 100): Promise<SerializedAbort[]> {
+  const events = await getReader().aborts(limit);
+  return events.map(serializeAbort);
+}
+
+export async function getAbortsByAgent(
+  agent: string,
+  limit = 200,
+): Promise<SerializedAbort[]> {
+  const events = await getReader().abortsByAgent(agent, limit);
+  return events.map(serializeAbort);
+}
+
+/**
+ * Derive the distinct agent set from recent receipts and aborts (DESIGN.md
+ * resolved Q3: client-side derivation, no indexer). Returns one summary per
+ * agent, newest activity first.
+ */
+export async function getAgents(limit = 200): Promise<SerializedAgent[]> {
+  const r = getReader();
+  const [receipts, aborts] = await Promise.all([r.recent(limit), r.aborts(limit)]);
+  const map = new Map<string, SerializedAgent>();
+
+  const ensure = (addr: string): SerializedAgent => {
+    const key = normalize(addr);
+    let entry = map.get(key);
+    if (!entry) {
+      entry = {
+        address: addr,
+        spendCount: 0,
+        abortCount: 0,
+        abortRate: 0,
+        lastActivityMs: 0,
+        riskMix: { low: 0, medium: 0, high: 0, critical: 0 },
+      };
+      map.set(key, entry);
+    }
+    return entry;
+  };
+
+  for (const e of receipts) {
+    const a = ensure(e.agent);
+    a.spendCount += 1;
+    a.riskMix[scoreToBand(Number(e.risk_score))] += 1;
+    a.lastActivityMs = Math.max(a.lastActivityMs, Number(e.timestamp_ms));
+  }
+  for (const e of aborts) {
+    const a = ensure(e.agent);
+    a.abortCount += 1;
+    a.riskMix[scoreToBand(Number(e.risk_score))] += 1;
+    a.lastActivityMs = Math.max(a.lastActivityMs, Number(e.timestamp_ms));
+  }
+
+  for (const a of map.values()) {
+    const denom = a.spendCount + a.abortCount;
+    a.abortRate = denom === 0 ? 0 : a.abortCount / denom;
+  }
+
+  return [...map.values()].sort((x, y) => y.lastActivityMs - x.lastActivityMs);
+}
+
+function serializeReasoning(b: ReasoningBlob): SerializedReasoning {
+  return {
+    v: 2,
+    type: b.type,
+    agent: b.agent,
+    wallet: b.wallet,
+    ts: b.ts,
+    intent: {
+      to: b.intent.to,
+      amount: String(b.intent.amount),
+      coinType: b.intent.coin_type,
+      reasoning: {
+        prompt: b.intent.reasoning.prompt,
+        decision: b.intent.reasoning.decision,
+        model: b.intent.reasoning.model,
+      },
+    },
+    simulation: {
+      success: b.simulation.success,
+      balanceChanges: b.simulation.balance_changes,
+      gasEstimate: String(b.simulation.gas_estimate),
+      riskScore: b.simulation.risk_score,
+      risks: b.simulation.risks,
+      recommendation: b.simulation.recommendation,
+    },
+    policyCheck: {
+      passed: b.policy_check.passed,
+      violations: b.policy_check.violations,
+    },
+    outcome: b.outcome,
+    abortReason: b.abort_reason,
+    blake3: b.blake3,
+  };
+}
+
+/** Fetch a reasoning blob. Sealed blobs return a marker, never plaintext. */
+export async function getReasoning(blobId: string): Promise<SerializedReasoningResult> {
+  try {
+    const res = await getReader().reasoning(blobId);
+    if (res.sealed) {
+      return { sealed: true, policyId: res.policyId, auditors: res.auditors };
+    }
+    return { sealed: false, reasoning: serializeReasoning(res.blob) };
+  } catch (err) {
+    return {
+      sealed: false,
+      reasoning: null,
+      error: err instanceof Error ? err.message : "Could not load the reasoning blob from Walrus.",
+    };
+  }
+}
+
+/**
+ * Decrypt a sealed blob if the viewer is allowlisted. Runs server-side only; the
+ * seal master secret never leaves this process. Returns 403 when the viewer is
+ * not on the auditor allowlist.
+ */
+export async function revealReasoning(
+  blobId: string,
+  viewer: string,
+): Promise<DecryptResult> {
+  try {
+    const blob = await getReader().reveal(blobId, viewer);
+    return { ok: true, reasoning: serializeReasoning(blob) };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Decrypt failed.";
+    const denied = message.toLowerCase().includes("allowlist");
+    if (denied) {
+      // Re-read the marker to surface the auditor count for the empty state.
+      let auditorCount: number | undefined;
+      try {
+        const res = await getReader().reasoning(blobId);
+        if (res.sealed) auditorCount = res.auditors.length;
+      } catch {
+        auditorCount = undefined;
+      }
+      return {
+        ok: false,
+        status: 403,
+        error: "viewer is not in the auditor allowlist",
+        auditorCount,
+      };
+    }
+    return { ok: false, status: 500, error: message };
+  }
+}
