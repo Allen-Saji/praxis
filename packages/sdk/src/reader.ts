@@ -23,11 +23,38 @@ export interface ReceiptEvent {
 export interface AbortEvent {
   agent: string;
   wallet: string;
+  recipient: string;
+  amount: string;
   walrus_blob_id: number[];
   /** 0 agent_decision, 1 policy_block, 2 high_risk, 3 sim_failed. */
   reason_code: number;
   risk_score: number;
   timestamp_ms: string;
+}
+
+export const ABORT_REASON_LABELS = [
+  "agent_decision",
+  "policy_block",
+  "high_risk",
+  "sim_failed",
+] as const;
+
+/** One row of the unified spend stream: a confirmed spend or a blocked one. */
+export interface StreamEntry {
+  kind: "spend" | "abort";
+  status: "confirmed" | "aborted";
+  agent: string;
+  wallet: string;
+  recipient: string;
+  amount: string;
+  risk_score: number;
+  sealed: boolean;
+  walrus_blob_id: number[];
+  timestamp_ms: string;
+  /** Present on confirmed spends. */
+  receipt_id?: string;
+  /** Present on aborts. */
+  abort_reason?: string;
 }
 
 export interface IndexStats {
@@ -124,6 +151,45 @@ export class PraxisReader {
   async abortsByAgent(agent: string, limit = 200): Promise<AbortEvent[]> {
     const target = safeNorm(agent);
     return (await this.aborts(limit)).filter((a) => safeNorm(a.agent) === target);
+  }
+
+  /** Unified feed of confirmed and aborted spends, newest first. */
+  async stream(limit = 50): Promise<StreamEntry[]> {
+    const [spends, aborts] = await Promise.all([this.recent(limit), this.aborts(limit)]);
+    const entries: StreamEntry[] = [
+      ...spends.map(
+        (r): StreamEntry => ({
+          kind: "spend",
+          status: "confirmed",
+          agent: r.agent,
+          wallet: r.wallet,
+          recipient: r.recipient,
+          amount: r.amount,
+          risk_score: r.risk_score,
+          sealed: r.sealed,
+          walrus_blob_id: r.walrus_blob_id,
+          timestamp_ms: r.timestamp_ms,
+          receipt_id: r.receipt_id,
+        }),
+      ),
+      ...aborts.map(
+        (a): StreamEntry => ({
+          kind: "abort",
+          status: "aborted",
+          agent: a.agent,
+          wallet: a.wallet,
+          recipient: a.recipient,
+          amount: a.amount,
+          risk_score: a.risk_score,
+          sealed: false,
+          walrus_blob_id: a.walrus_blob_id,
+          timestamp_ms: a.timestamp_ms,
+          abort_reason: ABORT_REASON_LABELS[a.reason_code] ?? "unknown",
+        }),
+      ),
+    ];
+    entries.sort((x, y) => Number(y.timestamp_ms) - Number(x.timestamp_ms));
+    return entries.slice(0, limit);
   }
 
   /** Fetch a reasoning blob. Sealed blobs return a marker, not plaintext. */

@@ -9,8 +9,8 @@ export interface Deployment {
 /** Deployed praxis_core addresses. Testnet is live; mainnet is post-hackathon. */
 export const DEPLOYMENTS: Record<Network, Deployment> = {
   testnet: {
-    packageId: "0xb9e95d52354fc86c1d85ed58f7d8b7e90c76347961da16cc6e95845e9b56e32d",
-    agentIndexId: "0x42780ec3caadec6c9aaea33d9aee857c40dbf86edefadeaeebff7b01187069d7",
+    packageId: "0x77b14929d5a7bf54145f6239f54f58f699343777ccca2152904ab45e382574dc",
+    agentIndexId: "0xe142909ccb65a560a7c921e1990747cc08bddcb28424d8c7c40ed7f829f6aa99",
     clockId: "0x6",
   },
   mainnet: {

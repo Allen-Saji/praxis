@@ -119,11 +119,17 @@ export function assessRisk(input: RiskInput): RiskOutput {
     riskScore: score,
     risks,
     policyViolations,
-    recommendation: recommend(score, p),
+    recommendation: recommend(score, policyViolations.length > 0, p),
   };
 }
 
-function recommend(score: number, policy?: SpendingPolicy): Recommendation {
+function recommend(
+  score: number,
+  hasPolicyViolation: boolean,
+  policy?: SpendingPolicy,
+): Recommendation {
+  // Explicit policy violations are hard rules the operator set: always block.
+  if (hasPolicyViolation) return "abort";
   const blockAt =
     policy?.minRiskScoreToBlock && policy.minRiskScoreToBlock > 0
       ? policy.minRiskScoreToBlock

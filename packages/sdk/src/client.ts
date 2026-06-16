@@ -133,7 +133,14 @@ export class Praxis {
     const { blobId } = await this.walrus.writeJson(stored);
 
     if (!gate.proceed) {
-      await this.recordAbort(agent, blobId, gate.abortReason ?? "agent_decision", report.riskScore);
+      await this.recordAbort(
+        agent,
+        args.to,
+        args.amount,
+        blobId,
+        gate.abortReason ?? "agent_decision",
+        report.riskScore,
+      );
       return {
         status: "aborted",
         walrusBlobId: blobId,
@@ -290,6 +297,8 @@ export class Praxis {
 
   private async recordAbort(
     agent: string,
+    recipient: string,
+    amount: bigint,
     blobId: string,
     reason: AbortReason,
     riskScore: number,
@@ -300,6 +309,8 @@ export class Praxis {
       arguments: [
         tx.object(this.deployment.agentIndexId),
         tx.pure.address(agent),
+        tx.pure.address(recipient),
+        tx.pure.u64(amount),
         tx.pure.vector("u8", utf8Bytes(blobId)),
         tx.pure.u8(ABORT_REASON_CODE[reason]),
         tx.pure.u8(riskScore),

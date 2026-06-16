@@ -1,11 +1,13 @@
 export { Praxis, type PraxisOptions } from "./client";
 export {
   PraxisReader,
+  ABORT_REASON_LABELS,
   type PraxisReaderOptions,
   type ReceiptEvent,
   type AbortEvent,
   type IndexStats,
   type ReasoningResult,
+  type StreamEntry,
 } from "./reader";
 export { KeypairAdapter, GenericAdapter, type GenericAdapterOptions } from "./adapters";
 export { assessRisk, type RiskInput, type RiskOutput } from "./risk";
