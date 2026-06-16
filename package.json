@@ -1,0 +1,23 @@
+{
+  "name": "praxis",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Wallet-agnostic security, simulation, and audit layer for AI agent spending on Sui",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=20.10"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" build",
+    "test": "pnpm -r test",
+    "move:build": "sui move build --path move/praxis_core",
+    "move:test": "sui move test --path move/praxis_core",
+    "deploy:move": "bash scripts/deploy-move.sh",
+    "seed": "tsx scripts/seed-demo-data.ts",
+    "demo:cli": "tsx scripts/demo-cli.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,32 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# move
+move/**/build/
+
+# raw deploy output (keep the parsed deployments/<network>.json)
+deployments/*.publish.json
+
+# env + secrets
+.env
+.env.*
+!.env.example
+*.key
+.praxis/
+
+# logs
+*.log
+npm-debug.log*
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
