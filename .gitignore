@@ -30,3 +30,6 @@ npm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# local submission draft (kept out of the repo)
+docs/SUBMISSION.md
