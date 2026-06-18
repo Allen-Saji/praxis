@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStream } from "@/lib/praxis.server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,6 +11,9 @@ export const revalidate = 0;
  * PraxisReader.stream().
  */
 export async function GET(request: Request) {
+  const limited = enforceRateLimit(request, { bucket: "stream" });
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const limitParam = Number(searchParams.get("limit"));
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 200) : 50;

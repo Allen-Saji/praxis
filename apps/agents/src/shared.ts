@@ -47,7 +47,12 @@ export function loadContext(): AgentContext {
 }
 
 export function makePraxis(ctx: AgentContext, policy?: SpendingPolicy): Praxis {
-  return new Praxis({ network: "testnet", wallet: ctx.wallet, policy });
+  return new Praxis({
+    network: "testnet",
+    wallet: ctx.wallet,
+    policy,
+    sealSecret: process.env.PRAXIS_SEAL_SECRET,
+  });
 }
 
 /** One spend an agent attempts. `agent` is filled in by `attempt`. */

@@ -23,6 +23,7 @@ sui client publish ./move/praxis_core --json --gas-budget 200000000 >"$RAW"
 # (the published package shows up as objectType=="package").
 PKG="$(jq -r '.changed_objects[] | select(.idOperation=="CREATED" and .objectType=="package") | .objectId' "$RAW")"
 INDEX="$(jq -r '.changed_objects[] | select(.objectType != null and (.objectType|test("agent_registry::AgentIndex"))) | .objectId' "$RAW")"
+AGENT_CAP="$(jq -r '.changed_objects[] | select(.objectType != null and (.objectType|test("agent_registry::AgentCap"))) | .objectId' "$RAW")"
 UPGRADE_CAP="$(jq -r '.changed_objects[] | select(.objectType != null and (.objectType|test("package::UpgradeCap"))) | .objectId' "$RAW")"
 STATUS="$(jq -r '.effects.V2.status // .effects.status' "$RAW")"
 
@@ -39,13 +40,17 @@ jq -n \
   --arg network "$NETWORK" \
   --arg packageId "$PKG" \
   --arg agentIndexId "$INDEX" \
+  --arg agentCapId "$AGENT_CAP" \
   --arg upgradeCapId "$UPGRADE_CAP" \
-  '{network:$network, packageId:$packageId, agentIndexId:$agentIndexId, upgradeCapId:$upgradeCapId, clockId:"0x6"}' \
+  '{network:$network, packageId:$packageId, agentIndexId:$agentIndexId, agentCapId:$agentCapId, upgradeCapId:$upgradeCapId, clockId:"0x6"}' \
   >"deployments/${NETWORK}.json"
 
 echo "----------------------------------------"
 echo "network:       $NETWORK"
 echo "packageId:     $PKG"
 echo "agentIndexId:  $INDEX"
+echo "agentCapId:    $AGENT_CAP"
 echo "upgradeCapId:  $UPGRADE_CAP"
 echo "written to:    deployments/${NETWORK}.json"
+echo
+echo "Now sync packageId/agentIndexId/agentCapId into packages/sdk/src/config.ts."

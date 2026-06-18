@@ -5,7 +5,7 @@ use sui::test_scenario as ts;
 use sui::clock;
 use sui::coin;
 use sui::sui::SUI;
-use praxis::agent_registry::{Self, AgentIndex};
+use praxis::agent_registry::{Self, AgentIndex, AgentCap};
 use praxis::spending_receipt;
 
 const OPERATOR: address = @0xA11CE;
@@ -20,10 +20,12 @@ fun record_spend_indexes_receipt() {
     s.next_tx(OPERATOR);
     {
         let mut index = s.take_shared<AgentIndex>();
+        let cap = s.take_from_sender<AgentCap>();
         let clock = clock::create_for_testing(s.ctx());
         let coin = coin::mint_for_testing<SUI>(1_000, s.ctx());
 
         spending_receipt::record_spend<SUI>(
+            &cap,
             &mut index,
             coin,
             AGENT,
@@ -43,6 +45,7 @@ fun record_spend_indexes_receipt() {
         assert!(agent_registry::has_tag(&index, b"tag_one"), 3);
 
         clock::destroy_for_testing(clock);
+        ts::return_to_sender(&s, cap);
         ts::return_shared(index);
     };
     s.end();
@@ -57,19 +60,21 @@ fun replayed_purpose_tag_aborts() {
     s.next_tx(OPERATOR);
     {
         let mut index = s.take_shared<AgentIndex>();
+        let cap = s.take_from_sender<AgentCap>();
         let clock = clock::create_for_testing(s.ctx());
         let c1 = coin::mint_for_testing<SUI>(500, s.ctx());
         let c2 = coin::mint_for_testing<SUI>(500, s.ctx());
 
         spending_receipt::record_spend<SUI>(
-            &mut index, c1, AGENT, RECIP, b"blob", b"", 10, true, b"dup", &clock, s.ctx(),
+            &cap, &mut index, c1, AGENT, RECIP, b"blob", b"", 10, true, b"dup", &clock, s.ctx(),
         );
         // same purpose tag -> registry aborts
         spending_receipt::record_spend<SUI>(
-            &mut index, c2, AGENT, RECIP, b"blob", b"", 10, true, b"dup", &clock, s.ctx(),
+            &cap, &mut index, c2, AGENT, RECIP, b"blob", b"", 10, true, b"dup", &clock, s.ctx(),
         );
 
         clock::destroy_for_testing(clock);
+        ts::return_to_sender(&s, cap);
         ts::return_shared(index);
     };
     s.end();
@@ -83,15 +88,17 @@ fun record_abort_increments_counter() {
     s.next_tx(OPERATOR);
     {
         let mut index = s.take_shared<AgentIndex>();
+        let cap = s.take_from_sender<AgentCap>();
         let clock = clock::create_for_testing(s.ctx());
 
-        agent_registry::record_abort(&mut index, AGENT, RECIP, 1_000, b"abort_blob", 2, 95, &clock, s.ctx());
-        agent_registry::record_abort(&mut index, AGENT, RECIP, 500, b"abort_blob_2", 0, 50, &clock, s.ctx());
+        agent_registry::record_abort(&cap, &mut index, AGENT, RECIP, 1_000, b"abort_blob", 2, 95, &clock, s.ctx());
+        agent_registry::record_abort(&cap, &mut index, AGENT, RECIP, 500, b"abort_blob_2", 0, 50, &clock, s.ctx());
 
         assert!(agent_registry::total_aborts(&index) == 2, 0);
         assert!(agent_registry::total_count(&index) == 0, 1);
 
         clock::destroy_for_testing(clock);
+        ts::return_to_sender(&s, cap);
         ts::return_shared(index);
     };
     s.end();
@@ -105,21 +112,23 @@ fun two_distinct_spends_index_both() {
     s.next_tx(OPERATOR);
     {
         let mut index = s.take_shared<AgentIndex>();
+        let cap = s.take_from_sender<AgentCap>();
         let clock = clock::create_for_testing(s.ctx());
         let c1 = coin::mint_for_testing<SUI>(500, s.ctx());
         let c2 = coin::mint_for_testing<SUI>(700, s.ctx());
 
         spending_receipt::record_spend<SUI>(
-            &mut index, c1, AGENT, RECIP, b"b1", b"", 10, true, b"t1", &clock, s.ctx(),
+            &cap, &mut index, c1, AGENT, RECIP, b"b1", b"", 10, true, b"t1", &clock, s.ctx(),
         );
         spending_receipt::record_spend<SUI>(
-            &mut index, c2, AGENT, RECIP, b"b2", b"seal_id", 40, true, b"t2", &clock, s.ctx(),
+            &cap, &mut index, c2, AGENT, RECIP, b"b2", b"seal_id", 40, true, b"t2", &clock, s.ctx(),
         );
 
         assert!(agent_registry::total_count(&index) == 2, 0);
         assert!(agent_registry::agent_receipt_count(&index, AGENT) == 2, 1);
 
         clock::destroy_for_testing(clock);
+        ts::return_to_sender(&s, cap);
         ts::return_shared(index);
     };
     s.end();

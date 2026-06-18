@@ -1,6 +1,7 @@
 "use client";
 
 import { Lock, LockOpen, ShieldAlert } from "lucide-react";
+import { useSignPersonalMessage } from "@mysten/dapp-kit";
 import { Button } from "@/components/primitives/Button";
 import { useViewer } from "@/components/providers/ViewerProvider";
 import { useDecrypt } from "@/lib/hooks/useDecrypt";
@@ -9,9 +10,11 @@ import { ReasoningChain } from "./ReasoningChain";
 
 /**
  * The "Decrypt with Seal" action and the reasoning panel it gates. A small state
- * machine: sealed-locked -> decrypting -> revealed | denied | error. The decrypt
- * runs server-side (POST /api/decrypt); only the connected viewer address is
- * sent. The seal master secret never reaches the browser (DESIGN.md section 9).
+ * machine: sealed-locked -> decrypting -> revealed | denied | error. Decryption
+ * requires proving control of the viewer address: the connected wallet signs a
+ * fresh challenge, and the server (POST /api/decrypt) verifies the signature
+ * before revealing. A typed-in address cannot decrypt (it cannot sign). The
+ * seal master secret never reaches the browser (DESIGN.md section 9).
  */
 export function DecryptControl({
   blobId,
@@ -22,6 +25,8 @@ export function DecryptControl({
 }) {
   const { viewer, source } = useViewer();
   const { state, decrypt } = useDecrypt();
+  const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
+  const canDecrypt = !!viewer && source === "wallet";
 
   if (state.kind === "revealed") {
     return (
@@ -52,7 +57,7 @@ export function DecryptControl({
       ) : (
         <p className="text-[13px] leading-[20px] text-[var(--text-mid)]">
           Sealed to {auditorCount} auditor{auditorCount === 1 ? "" : "s"}. Connect an allowlisted
-          address to decrypt it.
+          wallet and sign to decrypt it.
         </p>
       )}
 
@@ -61,18 +66,28 @@ export function DecryptControl({
           variant="primary"
           size="sm"
           loading={state.kind === "decrypting"}
-          disabled={!viewer || state.kind === "decrypting"}
-          onClick={() => viewer && decrypt(blobId, viewer)}
+          disabled={!canDecrypt || state.kind === "decrypting"}
+          onClick={() =>
+            canDecrypt &&
+            decrypt(blobId, viewer, async (message) => {
+              const { signature } = await signPersonalMessage({ message });
+              return { signature };
+            })
+          }
         >
           {state.kind === "decrypting" ? "Decrypting" : "Decrypt with Seal"}
         </Button>
-        {viewer ? (
+        {!viewer ? (
           <span className="text-[12px] text-[var(--text-low)]">
-            as {truncateMiddle(viewer)} ({source})
+            Connect an allowlisted wallet to decrypt.
+          </span>
+        ) : source === "wallet" ? (
+          <span className="text-[12px] text-[var(--text-low)]">
+            as {truncateMiddle(viewer)} (wallet)
           </span>
         ) : (
           <span className="text-[12px] text-[var(--text-low)]">
-            Connect a wallet or enter an address to decrypt.
+            Viewing as {truncateMiddle(viewer)} (manual). Connect this wallet to sign and decrypt.
           </span>
         )}
       </div>
@@ -86,7 +101,7 @@ function DeniedPanel({ auditorCount }: { auditorCount: number }) {
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
       <span>
         This reasoning is sealed to {auditorCount} auditor{auditorCount === 1 ? "" : "s"}. Connect
-        an allowlisted address to decrypt it.
+        an allowlisted wallet and sign to decrypt it.
       </span>
     </div>
   );

@@ -72,7 +72,7 @@ export class Praxis {
       epochs: opts.walrus?.epochs,
       localFallbackDir: opts.walrus?.localFallbackDir ?? ".praxis/blobs",
     });
-    this.sealer = opts.sealer ?? new LocalSealer(opts.sealSecret ?? "praxis-dev-seal-secret");
+    this.sealer = opts.sealer ?? new LocalSealer(opts.sealSecret);
     this.reader = new PraxisReader({
       network: this.network,
       client: this.client,
@@ -266,6 +266,7 @@ export class Praxis {
       target: `${this.deployment.packageId}::spending_receipt::record_spend`,
       typeArguments: [p.coinType],
       arguments: [
+        tx.object(this.deployment.agentCapId),
         tx.object(this.deployment.agentIndexId),
         coin,
         tx.pure.address(p.agent),
@@ -307,6 +308,7 @@ export class Praxis {
     tx.moveCall({
       target: `${this.deployment.packageId}::agent_registry::record_abort`,
       arguments: [
+        tx.object(this.deployment.agentCapId),
         tx.object(this.deployment.agentIndexId),
         tx.pure.address(agent),
         tx.pure.address(recipient),

@@ -105,7 +105,7 @@ export class PraxisReader {
         aggregator: opts.walrus?.aggregator ?? wep.aggregator,
         localFallbackDir: opts.walrus?.localFallbackDir ?? ".praxis/blobs",
       });
-    this.sealer = opts.sealer ?? new LocalSealer(opts.sealSecret ?? "praxis-dev-seal-secret");
+    this.sealer = opts.sealer ?? new LocalSealer(opts.sealSecret);
   }
 
   /** On-chain totals from the shared AgentIndex object. */

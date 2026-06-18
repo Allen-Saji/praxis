@@ -3,8 +3,11 @@
 ///
 /// `register` is package-visible only: the sole path to it is
 /// `spending_receipt::record_spend`, so an index entry can never exist without
-/// a real receipt. `record_abort` is public because aborts have no receipt --
-/// the reasoning lives in Walrus and only the counter + an event land on-chain.
+/// a real receipt. Both `record_spend` and `record_abort` require the
+/// `AgentCap` minted to the deployer at publish, so only the Praxis operator
+/// can write to the index. Without that gate `record_abort` was world-callable,
+/// letting anyone inflate the abort counter or emit spoofed abort events
+/// pointing at arbitrary agents/blobs.
 module praxis::agent_registry;
 
 use sui::clock::{Self, Clock};
@@ -22,6 +25,13 @@ public struct AgentIndex has key {
     seen_tags: Table<vector<u8>, bool>,
     total_count: u64,
     total_aborts: u64,
+}
+
+/// Authority to write to the shared `AgentIndex`. Minted once at publish and
+/// transferred to the deployer (the Praxis operator). Recording a spend or an
+/// abort requires holding it, so a stranger cannot forge index entries.
+public struct AgentCap has key, store {
+    id: UID,
 }
 
 public struct AbortRecorded has copy, drop {
@@ -48,6 +58,7 @@ fun init(ctx: &mut TxContext) {
         total_count: 0,
         total_aborts: 0,
     });
+    transfer::transfer(AgentCap { id: object::new(ctx) }, ctx.sender());
 }
 
 /// Index a freshly minted receipt. Package-visible: only `record_spend` calls it.
@@ -69,8 +80,11 @@ public(package) fun register(
 }
 
 /// Record a blocked/aborted spend. No receipt, no money moved -- just the
-/// counter and an event pointing at the Walrus reasoning blob.
+/// counter and an event pointing at the Walrus reasoning blob. Requires the
+/// `AgentCap` so only the operator can record aborts; otherwise the counter and
+/// the abort feed would be forgeable by anyone.
 public fun record_abort(
+    _cap: &AgentCap,
     index: &mut AgentIndex,
     agent: address,
     recipient: address,

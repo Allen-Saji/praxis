@@ -24,9 +24,14 @@ export interface Sealer {
  * `SealClient` later is drop-in (SPEC risk R2).
  */
 export class LocalSealer implements Sealer {
-  constructor(private masterSecret: string) {}
+  constructor(private masterSecret?: string) {}
 
   private keyFor(auditors: string[]): Buffer {
+    if (!this.masterSecret) {
+      throw new Error(
+        "seal secret is not configured: set PRAXIS_SEAL_SECRET (or pass `sealSecret`) before sealing or revealing reasoning",
+      );
+    }
     const allowlist = normalize(auditors).join(",");
     return createHash("sha256").update(`${this.masterSecret}|${allowlist}`).digest();
   }

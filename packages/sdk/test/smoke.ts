@@ -28,6 +28,7 @@ async function main() {
     network: "testnet",
     wallet,
     policy: { maxPerTx: SUI / 2n, minRiskScoreToBlock: 80, requireSim: true },
+    sealSecret: process.env.PRAXIS_SEAL_SECRET,
   });
 
   const bal = (await client.getBalance({ owner: me })).totalBalance;

@@ -9,6 +9,7 @@ import {
 } from "@praxis/sdk";
 import { bytesToString } from "./format";
 import { reasonCodeLabel, scoreToBand } from "./risk";
+import { verifyDecryptAuth } from "./verify.server";
 import type {
   SerializedReceipt,
   SerializedAbort,
@@ -25,15 +26,18 @@ import type {
  * Everything here runs in Server Components, route handlers, or server actions.
  * It reads live testnet data and returns flat, JSON-safe objects (every bigint
  * already a string, every blob-id byte array already decoded). The seal master
- * secret stays in this process; the dashboard default secret decrypts the blobs
- * the agents already sealed, so we never override `sealSecret`.
+ * secret is read from PRAXIS_SEAL_SECRET and stays in this process; it must
+ * match the secret the agents sealed with, and reveal throws if it is unset.
  */
 
 let reader: PraxisReader | null = null;
 
 function getReader(): PraxisReader {
   if (!reader) {
-    reader = new PraxisReader({ network: "testnet" });
+    reader = new PraxisReader({
+      network: "testnet",
+      sealSecret: process.env.PRAXIS_SEAL_SECRET,
+    });
   }
   return reader;
 }
@@ -343,14 +347,21 @@ export async function getReasoning(blobId: string): Promise<SerializedReasoningR
 }
 
 /**
- * Decrypt a sealed blob if the viewer is allowlisted. Runs server-side only; the
- * seal master secret never leaves this process. Returns 403 when the viewer is
- * not on the auditor allowlist.
+ * Decrypt a sealed blob for a viewer who has proven control of their address.
+ * Runs server-side only; the seal master secret never leaves this process.
+ * Returns 401 when the signature does not prove control of `viewer`, and 403
+ * when the (proven) viewer is not on the auditor allowlist.
  */
 export async function revealReasoning(
   blobId: string,
   viewer: string,
+  message: string,
+  signature: string,
 ): Promise<DecryptResult> {
+  const auth = await verifyDecryptAuth({ blobId, viewer, message, signature });
+  if (!auth.ok) {
+    return { ok: false, status: 401, error: auth.error };
+  }
   try {
     const blob = await getReader().reveal(blobId, viewer);
     return { ok: true, reasoning: serializeReasoning(blob) };

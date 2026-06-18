@@ -12,7 +12,7 @@ use std::type_name::{Self, TypeName};
 use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
 use sui::event;
-use praxis::agent_registry::{Self, AgentIndex};
+use praxis::agent_registry::{Self, AgentIndex, AgentCap};
 
 /// Bumped when the receipt schema changes.
 const RECEIPT_VERSION: u16 = 2;
@@ -60,6 +60,7 @@ const MS_PER_DAY: u64 = 86_400_000;
 /// which is the intended owner -- hence the self_transfer allow.
 #[allow(lint(self_transfer))]
 public fun record_spend<T>(
+    _cap: &AgentCap,
     index: &mut AgentIndex,
     payment: Coin<T>,
     agent: address,
