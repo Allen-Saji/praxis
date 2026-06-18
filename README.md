@@ -12,13 +12,13 @@ Built for Sui Overflow 2026 (Walrus track). Testnet, SUI-denominated spends in v
 
 ## The three-party model
 
-```
-   AGENT                 PRAXIS SDK                   WALLET
- (decides,    --->   simulate / risk-score /   --->  (signs what
-  no keys)    <---   gate / report             <---   is forwarded)
-                            |
-                  Walrus (reasoning) + Sui (receipt) + Seal (privacy)
-```
+![Praxis architecture](docs/praxis-architecture.png)
+
+The agent decides and holds no keys. Every spend enters the Praxis SDK as
+`praxis.spend()`, is dry-run simulated, risk-scored against 7 rules, and gated.
+Only on a proceed does the wallet adapter sign. Every decision, confirm and
+abort, is persisted on Sui in one atomic PTB across Walrus, Move objects, and
+Seal.
 
 The novel part: the simulation and risk report flow back to the agent before
 signing, so the agent can self-correct. A prompt-injected agent that tries to
