@@ -10,17 +10,9 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 export function HeroPremium() {
   return (
     <>
-      <span
-        className="rise glass inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-medium uppercase tracking-[0.06em] text-[var(--text-mid)]"
-        style={{ animationDelay: "0ms" }}
-      >
-        <span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--risk-low)]" aria-hidden="true" />
-        Testnet live
-      </span>
-
       <h1
         className="rise text-gradient max-w-[16ch] text-[clamp(40px,6.5vw,68px)] font-semibold leading-[1.04] tracking-[-0.02em]"
-        style={{ animationDelay: "60ms" }}
+        style={{ animationDelay: "0ms" }}
       >
         A safety layer between your AI agent and its wallet.
       </h1>

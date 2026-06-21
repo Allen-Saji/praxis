@@ -293,6 +293,161 @@ body {
   animation: praxis-rise 400ms cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
+/*
+  Three-party flow animation (landing). One synced 5s loop narrates the flow:
+  Agent -> Praxis (builds intent), Praxis evaluates, Praxis -> Wallet (signs)
+  with a report back to Agent, then a sweep across the Walrus audit bar. Every
+  layer shares the 5s duration so the windows stay choreographed. Each keyframe's
+  rest state is invisible, so prefers-reduced-motion (which jumps to the end
+  frame) hides them and leaves a clean static diagram.
+*/
+.flow-pulse {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 7px;
+  width: 42%;
+  margin-top: -3.5px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent) 42%,
+    #c6f4ff 50%,
+    var(--accent) 58%,
+    transparent
+  );
+  box-shadow: 0 0 14px 1px rgba(0, 210, 255, 0.95);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.flow-a {
+  animation: praxis-flow-fwd-a 5s linear infinite;
+}
+.flow-b {
+  animation: praxis-flow-fwd-b 5s linear infinite;
+}
+.flow-back {
+  animation: praxis-flow-back 5s linear infinite;
+}
+
+@keyframes praxis-flow-fwd-a {
+  0%,
+  4% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  7% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 1;
+    transform: translateX(420%);
+  }
+  25%,
+  100% {
+    opacity: 0;
+    transform: translateX(420%);
+  }
+}
+@keyframes praxis-flow-fwd-b {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  45% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(420%);
+  }
+  63%,
+  100% {
+    opacity: 0;
+    transform: translateX(420%);
+  }
+}
+@keyframes praxis-flow-back {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translateX(420%);
+  }
+  45% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+  63%,
+  100% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+/* Praxis node evaluating: a glowing ring pulse in the 24-42% window. */
+.flow-node-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+  pointer-events: none;
+  opacity: 0;
+  box-shadow:
+    0 0 34px 2px rgba(0, 210, 255, 0.55),
+    inset 0 0 22px rgba(0, 210, 255, 0.22);
+  animation: praxis-node-pulse 5s ease-in-out infinite;
+}
+@keyframes praxis-node-pulse {
+  0%,
+  24% {
+    opacity: 0;
+  }
+  33% {
+    opacity: 1;
+  }
+  42%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Walrus audit bar: a cyan sweep in the 64-86% window. */
+.flow-walrus-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.18), transparent);
+  will-change: transform, opacity;
+  animation: praxis-walrus-sweep 5s ease-in-out infinite;
+}
+@keyframes praxis-walrus-sweep {
+  0%,
+  64% {
+    opacity: 0;
+    transform: translateX(-40%);
+  }
+  68% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+    transform: translateX(180%);
+  }
+  86%,
+  100% {
+    opacity: 0;
+    transform: translateX(180%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
