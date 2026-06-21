@@ -2,7 +2,7 @@ import { ScanSearch, Gauge, FileCheck } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { HeroPremium } from "@/components/marketing/HeroPremium";
 import { ThreePartyDiagram } from "@/components/marketing/ThreePartyDiagram";
-import { LiveCounter } from "@/components/marketing/LiveCounter";
+import { LiveStatStrip } from "@/components/marketing/LiveStatStrip";
 import { FeatureRow } from "@/components/marketing/FeatureRow";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { getIndexStats } from "@/lib/praxis.server";
@@ -26,17 +26,15 @@ export default async function LandingPage() {
       <main className="flex-1">
         <HeroPremium />
 
+        <section className="mx-auto w-full max-w-[1080px] px-5 pb-6">
+          <LiveStatStrip initial={initialStats} />
+        </section>
+
         <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
           <h2 className="mb-6 text-center text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">
             The three-party model
           </h2>
           <ThreePartyDiagram />
-        </section>
-
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
-          <div className="glass-hi glow-accent rounded-[var(--r-lg)] px-6 py-14">
-            <LiveCounter initial={initialStats} />
-          </div>
         </section>
 
         <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
