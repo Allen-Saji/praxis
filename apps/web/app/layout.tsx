@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { JetBrains_Mono } from "next/font/google";
+import { GradientField } from "@/components/visual/GradientField";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -26,7 +27,10 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        <GradientField />
+        <div className="grain relative z-10 min-h-screen">{children}</div>
+      </body>
     </html>
   );
 }
