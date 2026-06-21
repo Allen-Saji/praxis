@@ -1,4 +1,4 @@
-import type { SpendingPolicy } from "@praxis/sdk";
+import type { SpendingPolicy } from "@allen-saji/praxis";
 import { AGENT, PAYEE, attempt, makePraxis, sui, type AgentContext, type SpendJob } from "./shared";
 
 // Per-trade and per-day caps. Cumulative day spend is tracked across this run.

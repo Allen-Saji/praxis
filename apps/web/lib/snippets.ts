@@ -2,7 +2,7 @@ import type { CodeTab } from "@/components/blocks/CodeBlock";
 
 /**
  * Real SDK calls used across the app (hero, docs, empty states). These mirror the
- * actual @praxis/sdk surface: new Praxis({ wallet }), praxis.simulate,
+ * actual @allen-saji/praxis surface: new Praxis({ wallet }), praxis.simulate,
  * praxis.spend with onReport, praxis.audit.recent. No invented APIs.
  */
 
@@ -25,7 +25,7 @@ export const INSTALL_SPEND_SNIPPET: CodeTab[] = [
   {
     label: "first-spend.ts",
     language: "typescript",
-    code: `import { Praxis } from "@praxis/sdk";
+    code: `import { Praxis } from "@allen-saji/praxis";
 
 const praxis = new Praxis({ wallet });
 
@@ -41,12 +41,12 @@ export const DOCS_INSTALL: CodeTab[] = [
   {
     label: "pnpm",
     language: "bash",
-    code: `pnpm add @praxis/sdk @mysten/sui`,
+    code: `pnpm add @allen-saji/praxis @mysten/sui`,
   },
   {
     label: "npm",
     language: "bash",
-    code: `npm install @praxis/sdk @mysten/sui`,
+    code: `npm install @allen-saji/praxis @mysten/sui`,
   },
 ];
 
@@ -54,7 +54,7 @@ export const DOCS_CONFIGURE: CodeTab[] = [
   {
     label: "configure.ts",
     language: "typescript",
-    code: `import { Praxis, GenericAdapter } from "@praxis/sdk";
+    code: `import { Praxis, GenericAdapter } from "@allen-saji/praxis";
 
 // Bring any wallet. Praxis never sees a private key; it only
 // receives a WalletAdapter that signs the transaction it builds.

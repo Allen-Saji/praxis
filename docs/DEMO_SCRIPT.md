@@ -96,7 +96,7 @@ VO:
 
 SCREEN:
 - Cut to terminal. Run:
-  `PRAXIS_OPERATOR_KEY=$PRAXIS_OPERATOR_KEY pnpm --filter @praxis/agents start attacker`
+  `PRAXIS_OPERATOR_KEY=$PRAXIS_OPERATOR_KEY pnpm --filter @allen-saji/praxis-agents start attacker`
 - Let the log print: balance read, amount = 85%, then the risk verdict line
   (score 90, DRAIN_DETECTED, status aborted).
 

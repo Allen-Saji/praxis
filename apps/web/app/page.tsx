@@ -6,7 +6,7 @@ import { LiveStatStrip } from "@/components/marketing/LiveStatStrip";
 import { FeatureRow } from "@/components/marketing/FeatureRow";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { getIndexStats } from "@/lib/praxis.server";
-import { DEPLOYMENTS } from "@praxis/sdk";
+import { DEPLOYMENTS } from "@allen-saji/praxis";
 
 export const dynamic = "force-dynamic";
 

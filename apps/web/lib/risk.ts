@@ -2,7 +2,7 @@
  * Risk band mapping and reason-code labels. Thresholds match the SDK guard:
  * review at 30, block at 80 (DESIGN.md section 8).
  */
-import type { RiskLevel } from "@praxis/sdk";
+import type { RiskLevel } from "@allen-saji/praxis";
 
 export type RiskBand = RiskLevel;
 

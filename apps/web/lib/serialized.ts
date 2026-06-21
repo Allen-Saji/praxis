@@ -3,7 +3,7 @@
  * The server runs PraxisReader (which uses node:fs / node:crypto and reads raw
  * Sui events), converts every bigint to string, decodes blob-id byte arrays to
  * strings, and ships these flat objects. Client components import only these
- * types, never @praxis/sdk.
+ * types, never @allen-saji/praxis.
  */
 import type {
   AbortReason,
@@ -11,7 +11,7 @@ import type {
   Risk,
   PolicyViolation,
   BalanceDelta,
-} from "@praxis/sdk";
+} from "@allen-saji/praxis";
 
 export type { Risk, PolicyViolation, BalanceDelta, Recommendation, AbortReason };
 

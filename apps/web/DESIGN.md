@@ -24,7 +24,7 @@ Datadog or a block explorer than to a marketing page. The headline metric is
 "drains prevented" (the aborted-spend counter). A high abort rate is good: it
 means the agent was protected.
 
-Audience: the dashboard serves two readers. A developer integrating `@praxis/sdk`
+Audience: the dashboard serves two readers. A developer integrating `@allen-saji/praxis`
 who wants to confirm the gate is firing, and a compliance officer who needs an
 audit trail they can defend (the EU AI Act Article 12 logging anchor for this
 project). Design for the compliance reader's trust and the developer's speed at
@@ -394,7 +394,7 @@ Atoms, then molecules, then organisms. Each maps to a file in section 10.
 ## 9. Real-Data Sources (per view)
 
 Hard constraint: no mock data anywhere. Every view binds to live testnet data via
-`@praxis/sdk`, Sui RPC, or the Walrus aggregator. The exact wiring, read straight
+`@allen-saji/praxis`, Sui RPC, or the Walrus aggregator. The exact wiring, read straight
 from the SDK and the Move package already deployed at
 `packageId 0xb9e95d52...e32d`, `agentIndexId 0x42780ec3...69d7` (testnet):
 
@@ -681,7 +681,7 @@ link, and recommendation PROCEED; the reasoning chain reads directly if public.
 |  Simulate         |                                                  |
 |  Spend + gate     |  1. Install                                      |
 |  Read the audit   |   +-------------------------------------------+  |
-|  trail            |   |  pnpm add @praxis/sdk @mysten/sui         |  |  CodeBlock
+|  trail            |   |  pnpm add @allen-saji/praxis @mysten/sui         |  |  CodeBlock
 |                   |   +-------------------------------------------+  |
 |                   |  2. Configure  ... 3. Simulate ... 4. Spend     |  CodeBlock per step
 |                   |   (each block is a real call from the SDK:       |

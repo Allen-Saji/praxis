@@ -13,7 +13,7 @@ project: praxis
 
 Praxis is a wallet-agnostic security, simulation, and audit layer for AI agent spending on Sui. It sits between any AI agent and any wallet provider (Privy, Turnkey, Crossmint, Sui native keypairs) — the agent never touches private keys. Before every spend, Praxis parses intent, simulates the transaction via `sui_dryRunTransactionBlock`, risk-scores the result, and feeds a rich report back to the agent. The agent self-corrects or confirms. Only then does Praxis instruct the underlying wallet to sign. Every decision — including aborts — writes a reasoning trail to Walrus, optionally Seal-encrypted for selective audit reveal.
 
-The product is delivered as: (1) an npm package `@praxis/sdk` that any agent framework can drop in, (2) a hosted web dashboard at praxis.dev where developers and compliance officers monitor agent spending, review simulation results, and decrypt sealed reasoning.
+The product is delivered as: (1) an npm package `@allen-saji/praxis` that any agent framework can drop in, (2) a hosted web dashboard at praxis.dev where developers and compliance officers monitor agent spending, review simulation results, and decrypt sealed reasoning.
 
 **One-line pitch:** "The security middleware between AI agents and their wallets — simulate before you sign, explain after you spend."
 
@@ -220,7 +220,7 @@ struct SpendingPolicy has key, store {
 }
 ```
 
-### 8.2 SDK package `@praxis/sdk`
+### 8.2 SDK package `@allen-saji/praxis`
 
 #### 8.2.1 Public API
 
@@ -493,7 +493,7 @@ Seven load-bearing primitives. No vanity imports.
 
 ### 13.1 Hackathon must-haves
 
-- M1: SDK published to npm under `@praxis/sdk` (testnet)
+- M1: SDK published to npm under `@allen-saji/praxis` (testnet)
 - M2: Move package deployed to Sui testnet
 - M3: Dashboard live at praxis.dev (or vercel fallback)
 - M4: ≥50 demo spends across 3 agents including aborted ones

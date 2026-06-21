@@ -1,7 +1,7 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { blake3Hex, KeypairAdapter, Praxis } from "@praxis/sdk";
-import type { SpendArgs, SpendingPolicy, SpendResult } from "@praxis/sdk";
+import { blake3Hex, KeypairAdapter, Praxis } from "@allen-saji/praxis";
+import type { SpendArgs, SpendingPolicy, SpendResult } from "@allen-saji/praxis";
 
 /** Deterministic 32-byte address from a label, for stable demo identities. */
 export function addr(label: string): string {

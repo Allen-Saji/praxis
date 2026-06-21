@@ -29,7 +29,7 @@ artifact.
 
 ```
 move/praxis_core      Move package: spending_receipt, agent_registry, policy
-packages/sdk          @praxis/sdk: the spend flow, risk engine, adapters,
+packages/sdk          @allen-saji/praxis: the spend flow, risk engine, adapters,
                       Walrus + Seal integration, and a read-only PraxisReader
 apps/agents           Sample agents: researcher, trader, attacker
 apps/web              Next.js dashboard (read-only, decrypt-only)
@@ -53,7 +53,7 @@ review at 30, block at 80.
 ## SDK quickstart
 
 ```ts
-import { Praxis, KeypairAdapter } from "@praxis/sdk";
+import { Praxis, KeypairAdapter } from "@allen-saji/praxis";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 
@@ -79,7 +79,7 @@ Read-only consumers (dashboards, auditors) use `PraxisReader`, which needs no
 wallet:
 
 ```ts
-import { PraxisReader } from "@praxis/sdk";
+import { PraxisReader } from "@allen-saji/praxis";
 
 const reader = new PraxisReader({ network: "testnet" });
 await reader.indexStats();          // { totalCount, totalAborts, abortRate }
@@ -92,11 +92,11 @@ await reader.reveal(blobId, viewer); // decrypt sealed reasoning if allowlisted
 ```bash
 pnpm install
 pnpm move:test                       # Move unit tests
-pnpm --filter @praxis/sdk build      # build the SDK
-pnpm --filter @praxis/web dev        # run the dashboard
+pnpm --filter @allen-saji/praxis build      # build the SDK
+pnpm --filter @allen-saji/praxis-web dev        # run the dashboard
 
 # Run the sample agents against testnet (operator key from your Sui keystore):
-PRAXIS_OPERATOR_KEY=suiprivkey... pnpm --filter @praxis/agents start all
+PRAXIS_OPERATOR_KEY=suiprivkey... pnpm --filter @allen-saji/praxis-agents start all
 ```
 
 Deploy the Move package and record the ids:

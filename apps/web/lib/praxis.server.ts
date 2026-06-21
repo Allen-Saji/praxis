@@ -6,7 +6,7 @@ import {
   type AbortEvent,
   type StreamEntry,
   type ReasoningBlob,
-} from "@praxis/sdk";
+} from "@allen-saji/praxis";
 import { bytesToString } from "./format";
 import { reasonCodeLabel, scoreToBand } from "./risk";
 import { verifyDecryptAuth } from "./verify.server";
@@ -22,7 +22,7 @@ import type {
 } from "./serialized";
 
 /**
- * Server-only Praxis data layer. The ONLY module that imports @praxis/sdk.
+ * Server-only Praxis data layer. The ONLY module that imports @allen-saji/praxis.
  * Everything here runs in Server Components, route handlers, or server actions.
  * It reads live testnet data and returns flat, JSON-safe objects (every bigint
  * already a string, every blob-id byte array already decoded). The seal master

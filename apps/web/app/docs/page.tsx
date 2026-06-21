@@ -8,7 +8,7 @@ import {
   DOCS_SPEND,
   DOCS_AUDIT,
 } from "@/lib/snippets";
-import { DEPLOYMENTS } from "@praxis/sdk";
+import { DEPLOYMENTS } from "@allen-saji/praxis";
 
 export const metadata = {
   title: "Praxis docs - quickstart",

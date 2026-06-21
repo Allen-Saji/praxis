@@ -1,6 +1,6 @@
 /**
  * Pure helpers for the unified spend stream. Client-safe (no Node built-ins, no
- * @praxis/sdk). A stream entry is either a confirmed spend (keyed by receiptId)
+ * @allen-saji/praxis). A stream entry is either a confirmed spend (keyed by receiptId)
  * or an aborted spend (keyed by blobId, since aborts carry no receipt id).
  */
 import type { SerializedReceipt, SerializedStreamEntry } from "./serialized";

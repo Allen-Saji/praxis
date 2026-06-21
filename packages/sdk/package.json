@@ -1,9 +1,32 @@
 {
-  "name": "@praxis/sdk",
+  "name": "@allen-saji/praxis",
   "version": "0.1.0",
-  "description": "Security, simulation, and audit layer for AI agent spending on Sui",
+  "description": "Security, simulation, and audit layer for AI agent spending on Sui. Simulate before you sign, explain after you spend.",
   "type": "module",
   "license": "MIT",
+  "author": "Allen Saji <allensaji04@gmail.com> (https://allensaji.dev)",
+  "homepage": "https://github.com/Allen-Saji/praxis#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allen-Saji/praxis.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/Allen-Saji/praxis/issues"
+  },
+  "keywords": [
+    "sui",
+    "ai-agents",
+    "agent-security",
+    "wallet-security",
+    "transaction-simulation",
+    "risk-engine",
+    "walrus",
+    "seal",
+    "audit-trail",
+    "web3"
+  ],
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,12 +38,17 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@mysten/sui": "^2.18.0",

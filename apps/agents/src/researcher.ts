@@ -1,4 +1,4 @@
-import type { SpendingPolicy } from "@praxis/sdk";
+import type { SpendingPolicy } from "@allen-saji/praxis";
 import { AGENT, PAYEE, attempt, makePraxis, sui, type AgentContext, type SpendJob } from "./shared";
 
 // Only known data vendors are allowed; anything else is flagged.

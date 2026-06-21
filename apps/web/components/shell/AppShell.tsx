@@ -3,7 +3,7 @@ import { TopBar } from "./TopBar";
 import { CommandPalette } from "./CommandPalette";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { TooltipProvider } from "@/components/primitives/Tooltip";
-import { DEPLOYMENTS } from "@praxis/sdk";
+import { DEPLOYMENTS } from "@allen-saji/praxis";
 
 /**
  * The dashboard frame: nav rail + top bar + Cmd+K palette + content slot. Wraps
