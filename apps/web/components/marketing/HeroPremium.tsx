@@ -4,11 +4,12 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 /**
  * Premium command-deck hero. Sits over the live WebGL aurora (GradientField).
  * Gradient-clipped headline, one-line subhead, two CTAs. Staggered reveal on
- * load, capped at 400ms, gated on prefers-reduced-motion via .rise.
+ * load, capped at 400ms, gated on prefers-reduced-motion via .rise. Renders a
+ * fragment; the page owns the full-viewport-height layout and centering.
  */
 export function HeroPremium() {
   return (
-    <section className="relative mx-auto flex w-full max-w-[920px] flex-col items-center gap-7 px-5 pt-24 pb-16 text-center">
+    <>
       <span
         className="rise glass inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-medium uppercase tracking-[0.06em] text-[var(--text-mid)]"
         style={{ animationDelay: "0ms" }}
@@ -51,6 +52,6 @@ export function HeroPremium() {
           Open the dashboard
         </Link>
       </div>
-    </section>
+    </>
   );
 }

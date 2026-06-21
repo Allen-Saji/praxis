@@ -24,10 +24,16 @@ export default async function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <SiteNav />
       <main className="flex-1">
-        <HeroPremium />
-
-        <section className="mx-auto w-full max-w-[1080px] px-5 pb-6">
-          <LiveStatStrip initial={initialStats} />
+        {/* First screen: hero centered, live proof strip pinned near the bottom.
+            Fills the viewport minus the 56px (3.5rem) sticky nav, so the
+            three-party model only appears on scroll. */}
+        <section className="relative flex min-h-[calc(100svh-3.5rem)] w-full flex-col items-center px-5">
+          <div className="flex w-full max-w-[920px] flex-1 flex-col items-center justify-center gap-7 text-center">
+            <HeroPremium />
+          </div>
+          <div className="w-full max-w-[1080px] pt-6 pb-12">
+            <LiveStatStrip initial={initialStats} />
+          </div>
         </section>
 
         <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
