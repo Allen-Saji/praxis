@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 import { scoreToBand, RISK_LABEL } from "@/lib/risk";
-import { RISK_META } from "./RiskBadge";
+import { RISK_META, riskSheen, riskGlow } from "./RiskBadge";
 
 /**
  * A 0..100 risk score: mono number plus a 4px segmented bar colored by band.
@@ -29,7 +29,10 @@ export function RiskScore({
   if (variant === "compact") {
     return (
       <span className={cn("inline-flex items-center gap-2", className)}>
-        <span className="tabular font-mono text-[14px] leading-[20px]" style={{ color }}>
+        <span
+          className="tabular font-mono text-[14px] leading-[20px]"
+          style={{ color, textShadow: riskGlow(color) }}
+        >
           {score}
         </span>
         <span className="flex h-1 w-12 gap-px overflow-hidden rounded-full" aria-hidden="true">
@@ -39,7 +42,7 @@ export function RiskScore({
               <span key={seg.band} className="relative flex-1 bg-[var(--panel-2)]">
                 <span
                   className="absolute inset-y-0 left-0"
-                  style={{ width: `${filled * 100}%`, backgroundColor: RISK_META[seg.band].color }}
+                  style={{ width: `${filled * 100}%`, background: riskSheen(RISK_META[seg.band].color) }}
                 />
               </span>
             );
@@ -52,7 +55,10 @@ export function RiskScore({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-baseline justify-between">
-        <span className="tabular font-mono text-[18px] leading-[24px] font-medium" style={{ color }}>
+        <span
+          className="tabular font-mono text-[18px] leading-[24px] font-medium"
+          style={{ color, textShadow: riskGlow(color) }}
+        >
           {score}
           <span className="ml-1 text-[13px] text-[var(--text-low)]">/ 100</span>
         </span>
@@ -67,7 +73,7 @@ export function RiskScore({
             <span key={seg.band} className="relative flex-1 bg-[var(--panel-2)]">
               <span
                 className="absolute inset-y-0 left-0"
-                style={{ width: `${filled * 100}%`, backgroundColor: RISK_META[seg.band].color }}
+                style={{ width: `${filled * 100}%`, background: riskSheen(RISK_META[seg.band].color) }}
               />
             </span>
           );

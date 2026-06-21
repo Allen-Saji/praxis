@@ -122,7 +122,7 @@ export function LiveSpendStream({ initial }: { initial: SerializedStreamEntry[] 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[17px] font-semibold leading-[24px] text-[var(--text-hi)]">
+        <h2 className="font-display text-[17px] font-semibold leading-[24px] tracking-[-0.01em] text-[var(--text-hi)]">
           Live spend stream
         </h2>
         <div className="flex items-center gap-4">

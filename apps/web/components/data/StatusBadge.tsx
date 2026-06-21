@@ -14,9 +14,9 @@ const STATUS_META: Record<
   { icon: LucideIcon; label: string; color: string; tint: string }
 > = {
   confirmed: { icon: Check, label: "Confirmed", color: "var(--text-mid)", tint: "rgba(155,161,168,0.12)" },
-  aborted: { icon: Shield, label: "Aborted", color: "var(--risk-critical)", tint: "rgba(244,81,108,0.14)" },
-  sim_passed: { icon: CircleCheck, label: "Passed", color: "var(--risk-low)", tint: "rgba(74,222,128,0.14)" },
-  sim_failed: { icon: CircleX, label: "Failed", color: "var(--risk-critical)", tint: "rgba(244,81,108,0.14)" },
+  aborted: { icon: Shield, label: "Aborted", color: "var(--risk-critical)", tint: "var(--risk-critical-tint)" },
+  sim_passed: { icon: CircleCheck, label: "Passed", color: "var(--risk-low)", tint: "var(--risk-low-tint)" },
+  sim_failed: { icon: CircleX, label: "Failed", color: "var(--risk-critical)", tint: "var(--risk-critical-tint)" },
 };
 
 export function StatusBadge({

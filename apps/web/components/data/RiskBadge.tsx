@@ -10,10 +10,10 @@ import { RISK_LABEL } from "@/lib/risk";
  * required Lucide icon so color is never the sole signal (DESIGN.md section 5).
  */
 const RISK_META: Record<RiskBand, { icon: LucideIcon; color: string; tint: string }> = {
-  low: { icon: ShieldCheck, color: "var(--risk-low)", tint: "rgba(74,222,128,0.14)" },
-  medium: { icon: AlertTriangle, color: "var(--risk-medium)", tint: "rgba(251,191,36,0.14)" },
-  high: { icon: Flame, color: "var(--risk-high)", tint: "rgba(251,146,60,0.14)" },
-  critical: { icon: OctagonAlert, color: "var(--risk-critical)", tint: "rgba(244,81,108,0.14)" },
+  low: { icon: ShieldCheck, color: "var(--risk-low)", tint: "var(--risk-low-tint)" },
+  medium: { icon: AlertTriangle, color: "var(--risk-medium)", tint: "var(--risk-medium-tint)" },
+  high: { icon: Flame, color: "var(--risk-high)", tint: "var(--risk-high-tint)" },
+  critical: { icon: OctagonAlert, color: "var(--risk-critical)", tint: "var(--risk-critical-tint)" },
 };
 
 export function RiskBadge({
@@ -39,6 +39,20 @@ export function RiskBadge({
       {showLabel ? <span>{RISK_LABEL[level]}</span> : null}
     </span>
   );
+}
+
+/**
+ * Glossy top-sheen fill for risk bars: lighter at the top, full color at the
+ * bottom, so a flat segment reads as a lit capsule instead of paint. color is a
+ * `var(--risk-*)` token; color-mix keeps the sheen tied to the live token value.
+ */
+export function riskSheen(color: string): string {
+  return `linear-gradient(180deg, color-mix(in srgb, ${color} 68%, #fff), ${color})`;
+}
+
+/** Color-matched luminous glow for a risk numeral, the way the cyan stat glows. */
+export function riskGlow(color: string): string {
+  return `0 0 14px color-mix(in srgb, ${color} 45%, transparent)`;
 }
 
 export { RISK_META };

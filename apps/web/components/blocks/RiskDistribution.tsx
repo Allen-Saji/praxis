@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 import { RISK_ORDER, RISK_LABEL, type RiskBand } from "@/lib/risk";
-import { RISK_META } from "@/components/data/RiskBadge";
+import { RISK_META, riskSheen } from "@/components/data/RiskBadge";
 
 /**
  * Compact stacked horizontal bar of low/medium/high/critical counts, with a
@@ -36,7 +36,7 @@ export function RiskDistribution({
                 key={band}
                 style={{
                   width: `${(counts[band] / total) * 100}%`,
-                  backgroundColor: RISK_META[band].color,
+                  background: riskSheen(RISK_META[band].color),
                 }}
               />
             ) : null,

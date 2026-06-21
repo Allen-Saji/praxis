@@ -33,7 +33,7 @@ export default async function AgentProfile({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">Agent</h1>
+        <h1 className="font-display text-[22px] font-semibold leading-[28px] tracking-[-0.01em] text-[var(--text-hi)]">Agent</h1>
         <Address value={agent} kind="account" head={8} tail={6} />
       </div>
 

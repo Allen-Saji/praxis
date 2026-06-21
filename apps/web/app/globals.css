@@ -24,11 +24,12 @@
   --color-accent: #00d2ff;
   --color-accent-quiet: #3dc8f0;
 
-  /* Risk levels: the four semantic colors */
-  --color-risk-low: #4ade80;
-  --color-risk-medium: #fbbf24;
-  --color-risk-high: #fb923c;
-  --color-risk-critical: #f4516c;
+  /* Risk levels: the four semantic colors. Luminous jewel tones, not stock
+     Tailwind, tuned to read alive against the cyan aurora field. */
+  --color-risk-low: #2fe08e;
+  --color-risk-medium: #ffc94e;
+  --color-risk-high: #ff8a4c;
+  --color-risk-critical: #ff4d63;
 
   /* Radius scale */
   --radius-sm: 6px;
@@ -38,6 +39,8 @@
   /* Fonts wired by next/font in layout.tsx */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "JetBrains Mono", monospace;
+  /* Display face for dashboard headings, ties them to the landing wordmark. */
+  --font-display: var(--font-space-grotesk), var(--font-geist-sans), system-ui, sans-serif;
 }
 
 /*
@@ -58,10 +61,17 @@
   --accent-quiet: #3dc8f0;
   --accent-tint: rgba(0, 210, 255, 0.12);
 
-  --risk-low: #4ade80;
-  --risk-medium: #fbbf24;
-  --risk-high: #fb923c;
-  --risk-critical: #f4516c;
+  --risk-low: #2fe08e;
+  --risk-medium: #ffc94e;
+  --risk-high: #ff8a4c;
+  --risk-critical: #ff4d63;
+
+  /* Badge/pill backgrounds, one source of truth so a color retune touches only
+     this file. Mirror the risk hexes at low alpha. */
+  --risk-low-tint: rgba(47, 224, 142, 0.14);
+  --risk-medium-tint: rgba(255, 201, 78, 0.14);
+  --risk-high-tint: rgba(255, 138, 76, 0.14);
+  --risk-critical-tint: rgba(255, 77, 99, 0.16);
 
   --r-sm: 6px;
   --r-md: 10px;

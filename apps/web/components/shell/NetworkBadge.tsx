@@ -14,7 +14,7 @@ export function NetworkBadge({ packageId }: { packageId: string }) {
     return (
       <span
         className="inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 text-[12px] font-medium"
-        style={{ backgroundColor: "rgba(251,146,60,0.14)", color: "var(--risk-high)" }}
+        style={{ backgroundColor: "var(--risk-high-tint)", color: "var(--risk-high)" }}
       >
         <AlertTriangle className="h-3.5 w-3.5" />
         no deployment

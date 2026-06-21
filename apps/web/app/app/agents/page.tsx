@@ -13,7 +13,7 @@ export default async function AgentsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-[30px] font-semibold leading-[36px] tracking-tight text-[var(--text-hi)]">
+        <h1 className="font-display text-gradient text-[30px] font-semibold leading-[36px] tracking-tight">
           Agents
         </h1>
         <p className="text-[14px] text-[var(--text-mid)]">

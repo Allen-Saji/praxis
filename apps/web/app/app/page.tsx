@@ -19,7 +19,7 @@ export default async function DashboardHome() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-[30px] font-semibold leading-[36px] tracking-tight text-[var(--text-hi)]">
+        <h1 className="font-display text-gradient text-[30px] font-semibold leading-[36px] tracking-tight">
           Dashboard
         </h1>
         <p className="text-[14px] text-[var(--text-mid)]">
@@ -30,7 +30,7 @@ export default async function DashboardHome() {
       <StatHeader initialStats={stats} agents={agents} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-[17px] font-semibold leading-[24px] text-[var(--text-hi)]">Agents</h2>
+        <h2 className="font-display text-[17px] font-semibold leading-[24px] tracking-[-0.01em] text-[var(--text-hi)]">Agents</h2>
         {agents.length === 0 ? (
           <EmptyState
             icon={Bot}

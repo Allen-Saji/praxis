@@ -1,5 +1,6 @@
 "use client";
 
+import { Activity, ShieldAlert, BarChart3, ShieldCheck } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { RiskDistribution } from "./RiskDistribution";
 import { CountUp } from "@/components/vendor/CountUp";
@@ -36,14 +37,20 @@ export function StatHeader({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="Total spends" value={withThousands(String(stats.totalCount))} />
+      <StatCard
+        label="Total spends"
+        icon={Activity}
+        value={withThousands(String(stats.totalCount))}
+      />
       <StatCard
         label="Abort rate"
+        icon={ShieldAlert}
         value={formatPercent(stats.abortRate)}
         sub="blocked of all attempted spends"
       />
       <StatCard
         label="Risk distribution"
+        icon={BarChart3}
         value={
           <div className="pt-1">
             <RiskDistribution counts={riskMix} />
@@ -53,6 +60,7 @@ export function StatHeader({
       <StatCard
         label="Drains prevented"
         featured
+        icon={ShieldCheck}
         value={<CountUp value={stats.totalAborts} />}
         sub="live from AgentIndex.total_aborts"
       />
