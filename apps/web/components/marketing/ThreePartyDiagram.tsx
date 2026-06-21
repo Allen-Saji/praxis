@@ -72,12 +72,12 @@ function Connector({
 
       {/* Desktop: animated flow beams with labels. */}
       <div className="hidden w-[132px] flex-col items-center gap-2 sm:flex">
-        <span className="text-[11px] leading-none text-[var(--text-low)]">{forwardLabel}</span>
+        <span className="text-[11px] font-medium leading-none text-[var(--text-mid)]">{forwardLabel}</span>
         <Beam animClass={fwdClass} />
         {backLabel ? (
           <>
             <Beam animClass="flow-back" />
-            <span className="text-[11px] leading-none text-[var(--text-low)]">{backLabel}</span>
+            <span className="text-[11px] font-medium leading-none text-[var(--text-mid)]">{backLabel}</span>
           </>
         ) : null}
       </div>

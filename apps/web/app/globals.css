@@ -322,13 +322,13 @@ body {
   will-change: transform, opacity;
 }
 .flow-a {
-  animation: praxis-flow-fwd-a 5s linear infinite;
+  animation: praxis-flow-fwd-a 6.5s linear infinite;
 }
 .flow-b {
-  animation: praxis-flow-fwd-b 5s linear infinite;
+  animation: praxis-flow-fwd-b 6.5s linear infinite;
 }
 .flow-back {
-  animation: praxis-flow-back 5s linear infinite;
+  animation: praxis-flow-back 6.5s linear infinite;
 }
 
 @keyframes praxis-flow-fwd-a {
@@ -399,7 +399,7 @@ body {
   box-shadow:
     0 0 34px 2px rgba(0, 210, 255, 0.55),
     inset 0 0 22px rgba(0, 210, 255, 0.22);
-  animation: praxis-node-pulse 5s ease-in-out infinite;
+  animation: praxis-node-pulse 6.5s ease-in-out infinite;
 }
 @keyframes praxis-node-pulse {
   0%,
@@ -426,7 +426,7 @@ body {
   opacity: 0;
   background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.18), transparent);
   will-change: transform, opacity;
-  animation: praxis-walrus-sweep 5s ease-in-out infinite;
+  animation: praxis-walrus-sweep 6.5s ease-in-out infinite;
 }
 @keyframes praxis-walrus-sweep {
   0%,
