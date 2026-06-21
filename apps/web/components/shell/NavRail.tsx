@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, BookOpen, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Bot, BookOpen } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 interface NavItem {
   href: string;
@@ -39,16 +40,15 @@ export function NavRail() {
   return (
     <nav
       aria-label="Primary"
-      className="flex shrink-0 flex-col gap-1 border-r border-[var(--border)] bg-[var(--bg)] p-3 md:w-52"
+      className="flex shrink-0 flex-col gap-1 border-r border-white/5 bg-[rgba(11,13,17,0.4)] p-3 backdrop-blur-xl md:w-52"
     >
       <Link
         href="/"
-        className="mb-3 flex items-center gap-2 px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        className="mb-3 flex items-center px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        aria-label="Praxis home"
       >
-        <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
-        <span className="hidden text-[15px] font-semibold tracking-tight text-[var(--text-hi)] md:inline">
-          Praxis
-        </span>
+        <Wordmark className="hidden text-[20px] md:inline" />
+        <Wordmark monogram className="text-[20px] md:hidden" />
       </Link>
       {ITEMS.map((item) => {
         const active = item.match(pathname);
@@ -61,8 +61,8 @@ export function NavRail() {
             className={cn(
               "flex items-center gap-3 rounded-[var(--r-sm)] px-2.5 py-2 text-[14px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
               active
-                ? "bg-[var(--accent-tint)] text-[var(--accent)]"
-                : "text-[var(--text-mid)] hover:bg-[var(--panel-2)] hover:text-[var(--text-hi)]",
+                ? "bg-[var(--accent-tint)] text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(0,210,255,0.25)]"
+                : "text-[var(--text-mid)] hover:bg-white/5 hover:text-[var(--text-hi)]",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />

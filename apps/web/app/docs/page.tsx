@@ -40,7 +40,7 @@ export default function DocsPage() {
                 <a
                   key={step.id}
                   href={`#${step.id}`}
-                  className="rounded-[var(--r-sm)] px-2 py-1 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  className="rounded-[var(--r-sm)] px-2 py-1 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/5 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   {step.label}
                 </a>
@@ -51,7 +51,7 @@ export default function DocsPage() {
           {/* Content */}
           <article className="flex max-w-[72ch] flex-col gap-10">
             <header className="flex flex-col gap-2">
-              <h1 className="text-[30px] font-semibold leading-[36px] tracking-tight text-[var(--text-hi)]">
+              <h1 className="text-gradient text-[34px] font-semibold leading-[40px] tracking-tight">
                 Quickstart
               </h1>
               <p className="text-[15px] leading-[24px] text-[var(--text-mid)]">
@@ -118,7 +118,7 @@ function Step({
   return (
     <section id={id} className="flex scroll-mt-20 flex-col gap-3">
       <h2 className="flex items-center gap-2.5 text-[20px] font-semibold leading-[26px] text-[var(--text-hi)]">
-        <span className="flex h-6 w-6 items-center justify-center rounded-[var(--r-sm)] bg-[var(--panel-2)] font-mono text-[13px] text-[var(--accent)]">
+        <span className="flex h-6 w-6 items-center justify-center rounded-[var(--r-sm)] border border-white/10 bg-white/5 font-mono text-[13px] text-[var(--accent)]">
           {n}
         </span>
         {title}

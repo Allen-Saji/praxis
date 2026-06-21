@@ -1,19 +1,18 @@
 import Link from "next/link";
-import { ShieldCheck, Github } from "lucide-react";
+import { Github } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 /** Top nav for the landing/docs surface. */
 export function SiteNav() {
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-white/5 bg-[rgba(9,11,15,0.5)] backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-[1080px] items-center justify-between px-5">
         <Link
           href="/"
-          className="flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          className="flex items-center rounded-[var(--r-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          aria-label="Praxis home"
         >
-          <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
-          <span className="text-[15px] font-semibold tracking-tight text-[var(--text-hi)]">
-            Praxis
-          </span>
+          <Wordmark className="text-[20px]" />
         </Link>
         <nav className="flex items-center gap-1 text-[14px]" aria-label="Primary">
           <Link
@@ -33,7 +32,7 @@ export function SiteNav() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"
-            className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-mid)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <Github className="h-4 w-4" />
           </Link>

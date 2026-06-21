@@ -1,8 +1,8 @@
 import { ScanSearch, Gauge, FileCheck } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
-import { Hero } from "@/components/marketing/Hero";
+import { HeroPremium } from "@/components/marketing/HeroPremium";
 import { ThreePartyDiagram } from "@/components/marketing/ThreePartyDiagram";
-import { LiveCounter } from "@/components/marketing/LiveCounter";
+import { LiveStatStrip } from "@/components/marketing/LiveStatStrip";
 import { FeatureRow } from "@/components/marketing/FeatureRow";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { getIndexStats } from "@/lib/praxis.server";
@@ -24,22 +24,27 @@ export default async function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <SiteNav />
       <main className="flex-1">
-        <Hero />
+        {/* First screen: hero + live proof strip as one group, vertically
+            centered then biased upward (pb reserves space at the bottom). Fills
+            the viewport minus the 56px (3.5rem) sticky nav, so the three-party
+            model only appears on scroll. */}
+        <section className="relative flex min-h-[calc(100svh-3.5rem)] w-full flex-col items-center justify-center px-5 pb-[16vh]">
+          <div className="flex w-full max-w-[920px] flex-col items-center gap-7 text-center">
+            <HeroPremium />
+          </div>
+          <div className="w-full max-w-[1080px] pt-14">
+            <LiveStatStrip initial={initialStats} />
+          </div>
+        </section>
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-12">
-          <h2 className="mb-6 text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">
+        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
+          <h2 className="mb-6 text-center text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">
             The three-party model
           </h2>
           <ThreePartyDiagram />
         </section>
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-12">
-          <div className="rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--panel)] px-6 py-10">
-            <LiveCounter initial={initialStats} />
-          </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-12">
+        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <FeatureRow
               icon={ScanSearch}

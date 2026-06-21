@@ -76,12 +76,12 @@ export function CommandPalette() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="overlay-enter fixed inset-0 z-50 bg-black/55" />
+        <Dialog.Overlay className="overlay-enter fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
         <Dialog.Content
-          className="fixed left-1/2 top-[20%] z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-hi)] bg-[var(--panel)] shadow-[0_16px_48px_rgba(0,0,0,0.5)] focus:outline-none"
+          className="glass-solid fixed left-1/2 top-[20%] z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-[var(--r-lg)] focus:outline-none"
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
-          <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
             <Search className="h-4 w-4 text-[var(--text-low)]" />
             <input
               autoFocus
@@ -104,7 +104,7 @@ export function CommandPalette() {
                     <button
                       type="button"
                       onClick={a.run}
-                      className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[var(--r-sm)] px-3 py-2 text-left transition-colors duration-150 hover:bg-[var(--panel-2)] focus-visible:bg-[var(--panel-2)] focus-visible:outline-none"
+                      className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-[var(--r-sm)] px-3 py-2 text-left transition-colors duration-150 hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none"
                     >
                       <span className="flex items-center gap-2.5 text-[14px] text-[var(--text-hi)]">
                         <Icon className="h-4 w-4 text-[var(--text-mid)]" />

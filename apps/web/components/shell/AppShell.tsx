@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AppProviders>
       <TooltipProvider>
-        <div className="flex h-screen w-full overflow-hidden bg-[var(--bg)]">
+        <div className="flex h-screen w-full overflow-hidden bg-[rgba(8,10,14,0.8)]">
           <NavRail />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar packageId={packageId} />

@@ -76,12 +76,12 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="overflow-hidden rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)]">
+    <div className="glass overflow-hidden rounded-[var(--r-md)]">
       {/* Desktop / tablet table */}
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full border-collapse" aria-label={ariaLabel}>
-          <thead className="sticky top-0 z-10 bg-[var(--panel)]">
-            <tr className="border-b border-[var(--border)]">
+          <thead className="sticky top-0 z-10 bg-[rgba(16,18,22,0.92)] backdrop-blur-md">
+            <tr className="border-b border-white/10">
               {columns.map((col) => {
                 const sortable = Boolean(col.sortValue);
                 const activeSort = sort?.columnId === col.id;
@@ -145,9 +145,9 @@ export function DataTable<T>({
                   tabIndex={interactive ? 0 : undefined}
                   role={interactive ? "button" : undefined}
                   className={cn(
-                    "group border-b border-[var(--border)] transition-colors duration-150 last:border-b-0",
+                    "group border-b border-white/5 transition-colors duration-150 last:border-b-0",
                     interactive &&
-                      "cursor-pointer hover:bg-[var(--panel-2)] focus-visible:bg-[var(--panel-2)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)]",
+                      "cursor-pointer hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)]",
                     rowClassName?.(row, i),
                   )}
                 >
@@ -195,8 +195,8 @@ export function DataTable<T>({
                   : undefined
               }
               className={cn(
-                "flex flex-col gap-2 border-b border-[var(--border)] bg-[var(--panel)] p-4 last:border-b-0",
-                interactive && "cursor-pointer active:bg-[var(--panel-2)]",
+                "flex flex-col gap-2 border-b border-white/5 p-4 last:border-b-0",
+                interactive && "cursor-pointer active:bg-white/5",
               )}
             >
               {columns.map((col) => (

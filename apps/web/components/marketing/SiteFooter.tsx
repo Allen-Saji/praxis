@@ -4,7 +4,7 @@ import { truncateMiddle } from "@/lib/format";
 /** Landing/docs footer: links, the testnet package id, GitHub. */
 export function SiteFooter({ packageId }: { packageId: string }) {
   return (
-    <footer className="border-t border-[var(--border)]">
+    <footer className="border-t border-white/5 bg-[rgba(9,11,15,0.4)] backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <span className="text-[14px] font-semibold text-[var(--text-hi)]">Praxis</span>
