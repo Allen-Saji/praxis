@@ -38,3 +38,6 @@ npm-debug.log*
 
 # local submission draft (kept out of the repo)
 docs/SUBMISSION.md
+
+# vercel
+.vercel
