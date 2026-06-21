@@ -14,10 +14,7 @@ export function Section({
 }) {
   return (
     <section
-      className={cn(
-        "rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] p-5",
-        className,
-      )}
+      className={cn("glass rounded-[var(--r-md)] p-5", className)}
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-[14px] font-semibold uppercase tracking-[0.04em] text-[var(--text-hi)]">
