@@ -1,6 +1,6 @@
 import { ScanSearch, Gauge, FileCheck } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
-import { Hero } from "@/components/marketing/Hero";
+import { HeroPremium } from "@/components/marketing/HeroPremium";
 import { ThreePartyDiagram } from "@/components/marketing/ThreePartyDiagram";
 import { LiveCounter } from "@/components/marketing/LiveCounter";
 import { FeatureRow } from "@/components/marketing/FeatureRow";
@@ -24,22 +24,22 @@ export default async function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <SiteNav />
       <main className="flex-1">
-        <Hero />
+        <HeroPremium />
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-12">
-          <h2 className="mb-6 text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">
+        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
+          <h2 className="mb-6 text-center text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">
             The three-party model
           </h2>
           <ThreePartyDiagram />
         </section>
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-12">
-          <div className="rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--panel)] px-6 py-10">
+        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
+          <div className="glass-hi glow-accent rounded-[var(--r-lg)] px-6 py-14">
             <LiveCounter initial={initialStats} />
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-12">
+        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <FeatureRow
               icon={ScanSearch}

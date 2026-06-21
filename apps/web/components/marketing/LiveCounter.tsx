@@ -13,17 +13,17 @@ export function LiveCounter({ initial }: { initial: SerializedIndexStats }) {
   const { stats } = useIndexStats({ initial, live: true });
 
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="flex items-baseline gap-3">
+    <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1">
         <CountUp
           value={stats.totalAborts}
-          className="tabular font-mono text-[44px] leading-none font-medium text-[var(--text-hi)]"
+          className="tabular font-mono text-[clamp(56px,9vw,84px)] leading-none font-semibold text-[var(--accent)] [text-shadow:0_0_32px_rgba(0,210,255,0.55)]"
         />
-        <span className="border-b-2 border-[var(--accent)] pb-1 text-[18px] text-[var(--text-mid)]">
+        <span className="text-[clamp(18px,2.4vw,22px)] font-medium text-[var(--text-hi)]">
           drains prevented on testnet
         </span>
       </div>
-      <span className="text-[12px] text-[var(--text-low)]">
+      <span className="font-mono text-[12px] text-[var(--text-low)]">
         live from AgentIndex.total_aborts
       </span>
     </div>

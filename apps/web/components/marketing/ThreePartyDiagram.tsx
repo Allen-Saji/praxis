@@ -20,7 +20,7 @@ export function ThreePartyDiagram() {
         <Connector forward="signs if it passes" />
         <Node icon={Wallet} title="Wallet" line="signs the transaction" />
       </div>
-      <div className="rounded-[var(--r-md)] border border-dashed border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-center text-[13px] text-[var(--text-mid)]">
+      <div className="glass rounded-[var(--r-md)] px-4 py-3 text-center text-[13px] text-[var(--text-mid)]">
         Every decision is written to a Walrus audit trail with a tamper-evident on-chain receipt.
       </div>
     </div>
@@ -40,10 +40,8 @@ function Node({
 }) {
   return (
     <div
-      className={`flex flex-col items-center gap-2 rounded-[var(--r-md)] border p-5 text-center ${
-        accent
-          ? "border-[var(--accent)]/40 bg-[var(--panel)]"
-          : "border-[var(--border)] bg-[var(--panel)]"
+      className={`glass flex flex-col items-center gap-2 rounded-[var(--r-md)] p-5 text-center ${
+        accent ? "glow-accent" : ""
       }`}
     >
       <Icon
@@ -61,7 +59,7 @@ function Connector({ forward, back }: { forward: string; back?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1 px-1 py-2 sm:py-0">
       <span className="text-[11px] text-[var(--text-low)]">{forward}</span>
-      <span className="font-mono text-[var(--text-mid)]" aria-hidden="true">
+      <span className="font-mono text-[var(--accent)]" aria-hidden="true">
         {"->"}
       </span>
       {back ? (

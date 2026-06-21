@@ -4,7 +4,7 @@ import { ShieldCheck, Github } from "lucide-react";
 /** Top nav for the landing/docs surface. */
 export function SiteNav() {
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-white/5 bg-[rgba(9,11,15,0.5)] backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-[1080px] items-center justify-between px-5">
         <Link
           href="/"
@@ -33,7 +33,7 @@ export function SiteNav() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"
-            className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-mid)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <Github className="h-4 w-4" />
           </Link>
