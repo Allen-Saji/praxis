@@ -20,8 +20,8 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] p-4",
-        featured && "border-[var(--border-hi)]",
+        "glass flex flex-col gap-2 rounded-[var(--r-md)] p-4",
+        featured && "glow-accent",
         className,
       )}
     >
@@ -30,8 +30,10 @@ export function StatCard({
       </span>
       <span
         className={cn(
-          "tabular font-mono leading-none text-[var(--text-hi)]",
-          featured ? "text-[34px]" : "text-[26px]",
+          "tabular font-mono leading-none",
+          featured
+            ? "text-[34px] text-[var(--accent)] [text-shadow:0_0_24px_rgba(0,210,255,0.5)]"
+            : "text-[26px] text-[var(--text-hi)]",
         )}
       >
         {value}

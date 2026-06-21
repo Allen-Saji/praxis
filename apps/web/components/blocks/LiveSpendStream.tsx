@@ -137,7 +137,7 @@ export function LiveSpendStream({ initial }: { initial: SerializedStreamEntry[] 
             type="button"
             onClick={() => setLive((v) => !v)}
             aria-pressed={!live}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border)] px-2.5 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--r-sm)] border border-white/10 bg-white/5 px-2.5 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             {live ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             {live ? "Pause" : "Resume"}

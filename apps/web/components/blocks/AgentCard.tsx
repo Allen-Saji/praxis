@@ -15,7 +15,7 @@ export function AgentCard({ agent }: { agent: SerializedAgent }) {
   return (
     <Link
       href={`/app/agents/${agent.address}`}
-      className="group flex flex-col gap-3 rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--panel)] p-4 transition-colors duration-150 hover:border-[var(--border-hi)] hover:bg-[var(--panel-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      className="group glass flex flex-col gap-3 rounded-[var(--r-md)] p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--accent)]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
     >
       <div className="flex items-center justify-between">
         <span className="font-mono text-[14px] text-[var(--text-hi)]" title={agent.address}>
