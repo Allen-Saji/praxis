@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, BookOpen, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Bot, BookOpen } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 interface NavItem {
   href: string;
@@ -43,12 +44,11 @@ export function NavRail() {
     >
       <Link
         href="/"
-        className="mb-3 flex items-center gap-2 px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        className="mb-3 flex items-center px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        aria-label="Praxis home"
       >
-        <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
-        <span className="hidden text-[15px] font-semibold tracking-tight text-[var(--text-hi)] md:inline">
-          Praxis
-        </span>
+        <Wordmark className="hidden text-[20px] md:inline" />
+        <Wordmark monogram className="text-[20px] md:hidden" />
       </Link>
       {ITEMS.map((item) => {
         const active = item.match(pathname);

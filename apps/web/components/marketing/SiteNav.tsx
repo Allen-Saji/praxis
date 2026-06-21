@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ShieldCheck, Github } from "lucide-react";
+import { Github } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 /** Top nav for the landing/docs surface. */
 export function SiteNav() {
@@ -8,12 +9,10 @@ export function SiteNav() {
       <div className="mx-auto flex h-14 w-full max-w-[1080px] items-center justify-between px-5">
         <Link
           href="/"
-          className="flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          className="flex items-center rounded-[var(--r-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          aria-label="Praxis home"
         >
-          <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
-          <span className="text-[15px] font-semibold tracking-tight text-[var(--text-hi)]">
-            Praxis
-          </span>
+          <Wordmark className="text-[20px]" />
         </Link>
         <nav className="flex items-center gap-1 text-[14px]" aria-label="Primary">
           <Link
