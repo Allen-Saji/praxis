@@ -1,7 +1,11 @@
 # Praxis Dashboard - Design Brief
 
-Status: design only. No app code in this round. This document is the contract the
-build follows. All copy here is plain ASCII (no em dashes, no fancy symbols).
+Status: BUILT, then reskinned. Sections 1-14 describe the original "instrument,
+not brochure" build. Section 15 (Premium Atmosphere Redesign) is the current
+direction and SUPERSEDES the no-gradient / no-WebGL anti-patterns in sections 7
+and 13 where they conflict. The data semantics (risk colors, mono-for-truth,
+density, real-data-or-empty) are unchanged; only the surface treatment moved from
+flat-dark to a cinematic command deck. All copy is plain ASCII.
 
 ---
 
@@ -757,3 +761,61 @@ Informed by the references above and the product's compliance posture.
 4. Scope check: is the spend detail a right-side drawer on `/app`, a full route at
    `/app/spend/[id]`, or both (drawer for quick look, route for deep link)? The
    inventory supports both; confirm the default.
+
+---
+
+## 15. Premium Atmosphere Redesign (current direction)
+
+The dashboard kept the dense, trustworthy data semantics from sections 1-14 but
+the surface moved from flat near-black to a "security command deck": a live
+gradient atmosphere with glass panels floating on it. Wow for a hackathon
+showcase, without losing the credibility a security tool needs. This section is
+the contract for that layer.
+
+### Thesis
+
+Cinematic, not decorative. The motion lives in the background; the foreground
+data stays still and legible. Color is still signal: the brand cyan and the four
+risk colors keep their meaning, and the aurora is rationed so it never competes
+with a risk badge or a money figure.
+
+### The aurora (GradientField)
+
+- A single fullscreen triangle running a custom domain-warped fbm-noise fragment
+  shader, via `ogl` (~30kb). File: `components/visual/GradientField.tsx`. Lifted
+  into the root layout so it sits behind the whole app at `z-0`; all content is
+  wrapped at `z-10`.
+- Palette: obsidian -> deep blue -> teal -> rationed brand cyan, a cool indigo
+  (not violet), and a barely-there amber "threat" tint nodding at the risk reds.
+  A soft cyan bloom pools low-center as the bright heart.
+- Cheap and safe: DPR capped at 2, darkened toward the top so the nav reads,
+  vignetted edges, fine grain to kill banding. Pauses on tab hide. Respects
+  `prefers-reduced-motion` by rendering one static frame with no rAF loop.
+- Dimmed behind the dashboard (AppShell paints a `rgba(8,10,14,0.8)` scrim over
+  it) so dense data stays legible; full strength on landing and docs.
+
+### Glass + glow utilities (globals.css)
+
+- `.glass` - translucent panel, blur + saturate, hairline top sheen, soft lift.
+  The default surface for cards, nav, the three-party nodes, the data table.
+- `.glass-hi` - stronger glass for hero code card and the featured stat block.
+- `.glass-solid` - near-opaque (0.96) glass for focused modals (spend drawer,
+  command palette) so content behind never bleeds through. Paired with a
+  `bg-black/70 backdrop-blur-sm` overlay.
+- `.glow-accent` - cyan glow ring for the primary CTA and the drains-prevented
+  stat. `.text-gradient` - white-to-cyan headline clip. `.grain` - fixed
+  low-opacity film-grain overlay above content.
+
+### Motion (supersedes section 7's "no WebGL backgrounds")
+
+The aurora is the one ambient animation, and it is allowed precisely because it
+is background, gated on reduced-motion, and paused when hidden. Everything in
+section 7 about foreground motion still holds: micro-interactions 150-200ms,
+drawer 280ms, the live counter count-up, single-row stream insertion. No
+foreground element animates on a money figure mid-read.
+
+### What did NOT change
+
+Component inventory, data sources (section 9), real-data-or-empty, risk color
+semantics and contrast rules (section 5), mono-for-truth, table density numbers
+(section 6), accessibility. The redesign is a surface, not a re-architecture.
