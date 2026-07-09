@@ -1,6 +1,6 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { blake3Hex, KeypairAdapter, Praxis, resolveRpcUrl } from "@allen-saji/praxis";
+import { blake3Hex, KeypairAdapter, Praxis, makeSuiClient } from "@allen-saji/praxis";
 import type { SpendArgs, SpendingPolicy, SpendResult } from "@allen-saji/praxis";
 
 /** Deterministic 32-byte address from a label, for stable demo identities. */
@@ -41,17 +41,22 @@ export function loadContext(): AgentContext {
   const key = process.env.PRAXIS_OPERATOR_KEY;
   if (!key) throw new Error("PRAXIS_OPERATOR_KEY is not set (export your suiprivkey)");
   const keypair = Ed25519Keypair.fromSecretKey(key);
-  const client = new SuiJsonRpcClient({ url: resolveRpcUrl("testnet"), network: "testnet" });
+  const client = makeSuiClient("testnet");
   const wallet = new KeypairAdapter(keypair, client);
   return { keypair, client, wallet, address: keypair.toSuiAddress() };
 }
 
 export function makePraxis(ctx: AgentContext, policy?: SpendingPolicy): Praxis {
+  // Walrus testnet blobs expire after a few epochs. WALRUS_EPOCHS lets a re-seed
+  // store reasoning blobs for longer (testnet caps at 53) so the demo dashboard
+  // keeps resolving them; falls back to the SDK default when unset.
+  const epochs = Number(process.env.WALRUS_EPOCHS);
   return new Praxis({
     network: "testnet",
     wallet: ctx.wallet,
     policy,
     sealSecret: process.env.PRAXIS_SEAL_SECRET,
+    walrus: Number.isFinite(epochs) && epochs > 0 ? { epochs } : undefined,
   });
 }
 
