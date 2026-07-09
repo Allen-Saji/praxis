@@ -9,6 +9,7 @@ import {
 } from "@allen-saji/praxis";
 import { bytesToString } from "./format";
 import { reasonCodeLabel, scoreToBand } from "./risk";
+import { cached } from "./server-cache";
 import { verifyDecryptAuth } from "./verify.server";
 import type {
   SerializedReceipt,
@@ -30,12 +31,22 @@ import type {
  * match the secret the agents sealed with, and reveal throws if it is unset.
  */
 
+/**
+ * How long cached testnet reads stay warm. The dataset is static (no seeder in
+ * prod), so this only bounds how "live" the dashboard feels while shielding the
+ * public RPC endpoint from the 5s SWR poll multiplied across every viewer.
+ */
+const READ_TTL_MS = 30_000;
+
 let reader: PraxisReader | null = null;
 
 function getReader(): PraxisReader {
   if (!reader) {
     reader = new PraxisReader({
       network: "testnet",
+      // Overrides the (now-retired) fullnode.testnet.sui.io default. Falls back
+      // to the SDK's working default when SUI_RPC_URL is unset.
+      rpcUrl: process.env.SUI_RPC_URL,
       sealSecret: process.env.PRAXIS_SEAL_SECRET,
     });
   }
@@ -76,8 +87,10 @@ function serializeAbort(e: AbortEvent): SerializedAbort {
 }
 
 export async function getIndexStats(): Promise<SerializedIndexStats> {
-  const s = await getReader().indexStats();
-  return { totalCount: s.totalCount, totalAborts: s.totalAborts, abortRate: s.abortRate };
+  return cached("indexStats", READ_TTL_MS, async () => {
+    const s = await getReader().indexStats();
+    return { totalCount: s.totalCount, totalAborts: s.totalAborts, abortRate: s.abortRate };
+  });
 }
 
 export async function getReceiptsByAgent(
@@ -112,8 +125,10 @@ function serializeStreamEntry(e: StreamEntry): SerializedStreamEntry {
  * are first-class rows here, not a separate surface (DESIGN.md section 5).
  */
 export async function getStream(limit = 50): Promise<SerializedStreamEntry[]> {
-  const entries = await getReader().stream(limit);
-  return entries.map(serializeStreamEntry);
+  return cached(`stream:${limit}`, READ_TTL_MS, async () => {
+    const entries = await getReader().stream(limit);
+    return entries.map(serializeStreamEntry);
+  });
 }
 
 /**
@@ -252,6 +267,10 @@ export async function getAbortsByAgent(
  * agent, newest activity first.
  */
 export async function getAgents(limit = 200): Promise<SerializedAgent[]> {
+  return cached(`agents:${limit}`, READ_TTL_MS, () => computeAgents(limit));
+}
+
+async function computeAgents(limit: number): Promise<SerializedAgent[]> {
   const r = getReader();
   const [receipts, aborts] = await Promise.all([r.recent(limit), r.aborts(limit)]);
   const map = new Map<string, SerializedAgent>();
