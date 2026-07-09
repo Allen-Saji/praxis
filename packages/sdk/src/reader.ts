@@ -1,6 +1,7 @@
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { DEPLOYMENTS, WALRUS_ENDPOINTS, type Deployment } from "./config";
+import { makeSuiClient } from "./rpc";
 import { LocalSealer, type SealedBlob, type Sealer } from "./seal";
 import { WalrusStore } from "./walrus";
 import type { Network, ReasoningBlob } from "./types";
@@ -71,6 +72,8 @@ export type ReasoningResult =
 export interface PraxisReaderOptions {
   network?: Network;
   client?: SuiJsonRpcClient;
+  /** Override the JSON-RPC url (else SUI_RPC_URL env, else the network default). */
+  rpcUrl?: string;
   deployment?: Partial<Deployment>;
   walrusStore?: WalrusStore;
   walrus?: { publisher?: string; aggregator?: string; localFallbackDir?: string };
@@ -93,9 +96,7 @@ export class PraxisReader {
 
   constructor(opts: PraxisReaderOptions = {}) {
     this.network = opts.network ?? "testnet";
-    this.client =
-      opts.client ??
-      new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(this.network), network: this.network });
+    this.client = opts.client ?? makeSuiClient(this.network, opts.rpcUrl);
     this.deployment = { ...DEPLOYMENTS[this.network], ...opts.deployment };
     const wep = WALRUS_ENDPOINTS[this.network];
     this.walrus =

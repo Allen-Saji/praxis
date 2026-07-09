@@ -14,7 +14,15 @@ export { assessRisk, type RiskInput, type RiskOutput } from "./risk";
 export { WalrusStore, type WalrusStoreOptions, type WriteResult } from "./walrus";
 export { LocalSealer, type Sealer, type SealedBlob } from "./seal";
 export { canonicalize, blake3Hex } from "./canonical";
-export { DEPLOYMENTS, WALRUS_ENDPOINTS, SUI_TYPE, type Deployment } from "./config";
+export {
+  DEPLOYMENTS,
+  WALRUS_ENDPOINTS,
+  SUI_RPC_ENDPOINTS,
+  resolveRpcUrl,
+  SUI_TYPE,
+  type Deployment,
+} from "./config";
+export { makeSuiClient, resilientFetch } from "./rpc";
 export type {
   Network,
   Privacy,

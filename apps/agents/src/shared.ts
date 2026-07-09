@@ -1,6 +1,6 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { blake3Hex, KeypairAdapter, Praxis } from "@allen-saji/praxis";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { blake3Hex, KeypairAdapter, Praxis, resolveRpcUrl } from "@allen-saji/praxis";
 import type { SpendArgs, SpendingPolicy, SpendResult } from "@allen-saji/praxis";
 
 /** Deterministic 32-byte address from a label, for stable demo identities. */
@@ -41,7 +41,7 @@ export function loadContext(): AgentContext {
   const key = process.env.PRAXIS_OPERATOR_KEY;
   if (!key) throw new Error("PRAXIS_OPERATOR_KEY is not set (export your suiprivkey)");
   const keypair = Ed25519Keypair.fromSecretKey(key);
-  const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
+  const client = new SuiJsonRpcClient({ url: resolveRpcUrl("testnet"), network: "testnet" });
   const wallet = new KeypairAdapter(keypair, client);
   return { keypair, client, wallet, address: keypair.toSuiAddress() };
 }

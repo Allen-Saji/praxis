@@ -9,8 +9,8 @@
  * The key is read from env and never logged.
  */
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { KeypairAdapter, Praxis } from "../src/index";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { KeypairAdapter, Praxis, resolveRpcUrl } from "../src/index";
 
 const RECIPIENT = "0x00000000000000000000000000000000000000000000000000000000000b0b01";
 const SUI = 1_000_000_000n; // 1 SUI in MIST
@@ -20,7 +20,7 @@ async function main() {
   if (!key) throw new Error("set PRAXIS_OPERATOR_KEY (suiprivkey...)");
 
   const keypair = Ed25519Keypair.fromSecretKey(key);
-  const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
+  const client = new SuiJsonRpcClient({ url: resolveRpcUrl("testnet"), network: "testnet" });
   const wallet = new KeypairAdapter(keypair, client);
   const me = keypair.toSuiAddress();
 

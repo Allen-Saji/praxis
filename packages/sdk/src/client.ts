@@ -1,9 +1,10 @@
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { hexToBytes } from "@noble/hashes/utils.js";
 import { blake3Hex, canonicalize } from "./canonical";
 import { DEPLOYMENTS, SUI_TYPE, WALRUS_ENDPOINTS, type Deployment } from "./config";
+import { makeSuiClient } from "./rpc";
 import { PraxisReader } from "./reader";
 import { assessRisk } from "./risk";
 import { LocalSealer, type SealedBlob, type Sealer } from "./seal";
@@ -32,6 +33,8 @@ export interface PraxisOptions {
   network?: Network;
   wallet: WalletAdapter;
   client?: SuiJsonRpcClient;
+  /** Override the JSON-RPC url (else SUI_RPC_URL env, else the network default). */
+  rpcUrl?: string;
   deployment?: Partial<Deployment>;
   policy?: SpendingPolicy;
   walrus?: { publisher?: string; aggregator?: string; epochs?: number; localFallbackDir?: string };
@@ -59,9 +62,7 @@ export class Praxis {
 
   constructor(opts: PraxisOptions) {
     this.network = opts.network ?? "testnet";
-    this.client =
-      opts.client ??
-      new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(this.network), network: this.network });
+    this.client = opts.client ?? makeSuiClient(this.network, opts.rpcUrl);
     this.deployment = { ...DEPLOYMENTS[this.network], ...opts.deployment };
     this.wallet = opts.wallet;
     this.policy = opts.policy;

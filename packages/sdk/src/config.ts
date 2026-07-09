@@ -30,6 +30,33 @@ export const DEPLOYMENTS: Record<Network, Deployment> = {
   },
 };
 
+/**
+ * Default JSON-RPC endpoints. Mysten retired public JSON-RPC on
+ * `fullnode.<net>.sui.io` (it returns 404 as of 2026-07), yet the SDK helper
+ * `getJsonRpcFullnodeUrl` still points there, which broke every read. We carry
+ * our own working defaults instead. Testnet uses a provider that still serves
+ * full historical events (queryEvents), which the reader depends on; the common
+ * public nodes prune event history and cannot reconstruct older receipts.
+ * Override per instance with the `rpcUrl` option, or globally with the
+ * `SUI_RPC_URL` env var (server) / `NEXT_PUBLIC_SUI_RPC_URL` (browser).
+ */
+export const SUI_RPC_ENDPOINTS: Record<Network, string> = {
+  testnet: "https://sui-testnet-endpoint.blockvision.org",
+  mainnet: "https://sui-mainnet-endpoint.blockvision.org",
+};
+
+/**
+ * Resolve the RPC url for a network: explicit override > SUI_RPC_URL env >
+ * built-in default. The `process` guard keeps this safe in the browser bundle,
+ * where env reads happen at build time via NEXT_PUBLIC_ vars instead.
+ */
+export function resolveRpcUrl(network: Network, override?: string): string {
+  if (override) return override;
+  const fromEnv =
+    typeof process !== "undefined" ? process.env?.SUI_RPC_URL : undefined;
+  return fromEnv || SUI_RPC_ENDPOINTS[network];
+}
+
 export const WALRUS_ENDPOINTS: Record<Network, { publisher: string; aggregator: string }> = {
   testnet: {
     publisher: "https://publisher.walrus-testnet.walrus.space",
