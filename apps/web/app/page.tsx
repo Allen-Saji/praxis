@@ -1,34 +1,40 @@
-import { ScanSearch, Gauge, FileCheck } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { HeroPremium } from "@/components/marketing/HeroPremium";
 import { ThreePartyDiagram } from "@/components/marketing/ThreePartyDiagram";
 import { LiveStatStrip } from "@/components/marketing/LiveStatStrip";
-import { FeatureRow } from "@/components/marketing/FeatureRow";
+import { ProblemSection } from "@/components/marketing/ProblemSection";
+import { LandingIntervention } from "@/components/marketing/LandingIntervention";
+import { TrustBoundary } from "@/components/marketing/TrustBoundary";
+import { DeveloperQuickstart } from "@/components/marketing/DeveloperQuickstart";
+import { FinalCta } from "@/components/marketing/FinalCta";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { getIndexStats } from "@/lib/praxis.server";
+import { getIndexStats, getStream } from "@/lib/praxis.server";
 import { DEPLOYMENTS } from "@allen-saji/praxis";
+import { GradientField } from "@/components/visual/GradientField";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
   const packageId = DEPLOYMENTS.testnet.packageId;
-  // Read the live counter server-side so first paint is real, never a placeholder.
-  let initialStats = { totalCount: 0, totalAborts: 0, abortRate: 0 };
-  try {
-    initialStats = await getIndexStats();
-  } catch {
-    // Counter falls back to 0 and the client SWR poll recovers it.
-  }
+  // Keep the marketing proof real while allowing the page to recover from a
+  // temporary public RPC failure.
+  const [statsResult, streamResult] = await Promise.allSettled([
+    getIndexStats(),
+    getStream(25),
+  ]);
+  const initialStats =
+    statsResult.status === "fulfilled"
+      ? statsResult.value
+      : { totalCount: 0, totalAborts: 0, abortRate: 0 };
+  const stream = streamResult.status === "fulfilled" ? streamResult.value : [];
+  const latestIntervention = stream.find((entry) => entry.status === "aborted");
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="grain relative z-10 flex min-h-screen flex-col">
+      <GradientField />
       <SiteNav />
       <main className="flex-1">
-        {/* First screen: hero + live proof strip as one group, vertically
-            centered then biased upward (pb reserves space at the bottom). Fills
-            the viewport minus the 56px (3.5rem) sticky nav, so the three-party
-            model only appears on scroll. */}
-        <section className="relative flex min-h-[calc(100svh-3.5rem)] w-full flex-col items-center justify-center px-5 pb-[16vh]">
+        <section className="relative flex min-h-[calc(84svh-3.5rem)] w-full flex-col items-center justify-center px-5 pb-[7vh] pt-8">
           <div className="flex w-full max-w-[920px] flex-col items-center gap-7 text-center">
             <HeroPremium />
           </div>
@@ -37,32 +43,32 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
-          <h2 className="mb-6 text-center text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">
-            The three-party model
-          </h2>
-          <ThreePartyDiagram />
-        </section>
+        <ProblemSection />
 
-        <section className="mx-auto w-full max-w-[1080px] px-5 py-16">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <FeatureRow
-              icon={ScanSearch}
-              title="Simulate before signing"
-              body="Every spend is dry-run against the chain first. Praxis reads the balance changes and gas the transaction would cause, so the agent decides on facts, not guesses."
-            />
-            <FeatureRow
-              icon={Gauge}
-              title="Risk-score and gate"
-              body="The dry-run is scored 0 to 100. Praxis flags for review at 30 and blocks at 80, and a drain pattern fails outright. The agent self-corrects on the report before it ever signs."
-            />
-            <FeatureRow
-              icon={FileCheck}
-              title="Verifiable audit trail"
-              body="Each decision is written to Walrus with a tamper-evident on-chain receipt and an optional Seal-encrypted reasoning blob. An auditor can reconstruct exactly why a spend ran or did not."
-            />
+        {latestIntervention ? <LandingIntervention entry={latestIntervention} /> : null}
+
+        <section className="bg-[rgba(5,7,10,0.94)]">
+          <div className="mx-auto w-full max-w-[1080px] px-5 py-20 md:py-28">
+            <div className="mb-10 grid gap-5 md:grid-cols-[0.72fr_1.28fr] md:items-end">
+              <div>
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                  One controlled handoff
+                </span>
+                <h2 className="mt-4 max-w-[12ch] font-display text-[clamp(32px,4.5vw,54px)] font-semibold leading-[1.03] tracking-[-0.035em] text-[var(--text-hi)]">
+                  Decision first. Signature second.
+                </h2>
+              </div>
+              <p className="max-w-[56ch] text-[16px] leading-7 text-[var(--text-mid)] md:justify-self-end">
+                The report returns to the agent before the wallet is asked to sign, so the agent can self-correct on evidence instead of guessing.
+              </p>
+            </div>
+            <ThreePartyDiagram />
           </div>
         </section>
+
+        <TrustBoundary />
+        <DeveloperQuickstart />
+        <FinalCta />
       </main>
       <SiteFooter packageId={packageId} />
     </div>

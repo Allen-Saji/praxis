@@ -16,21 +16,21 @@ export function SiteFooter({ packageId }: { packageId: string }) {
           <div className="flex items-center gap-4 text-[13px]">
             <Link
               href="/docs"
-              className="text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
             >
               Docs
             </Link>
             <Link
               href="/app"
-              className="text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
             >
               Dashboard
             </Link>
             <Link
-              href="https://github.com"
+              href="https://github.com/Allen-Saji/praxis"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
             >
               GitHub
             </Link>
