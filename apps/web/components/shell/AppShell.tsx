@@ -1,4 +1,5 @@
 import { NavRail } from "./NavRail";
+import { MobileNav } from "./MobileNav";
 import { TopBar } from "./TopBar";
 import { CommandPalette } from "./CommandPalette";
 import { AppProviders } from "@/components/providers/AppProviders";
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AppProviders>
       <TooltipProvider>
-        <div className="flex h-screen w-full overflow-hidden bg-[linear-gradient(180deg,rgba(8,10,14,0.28),rgba(8,10,14,0.5))]">
+        <div className="flex h-dvh w-full overflow-hidden bg-[var(--bg)]">
           <NavRail />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar packageId={packageId} />
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {children}
               </div>
             </main>
+            <MobileNav />
           </div>
           <CommandPalette />
         </div>

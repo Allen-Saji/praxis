@@ -76,7 +76,7 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="glass overflow-hidden rounded-[var(--r-md)]">
+    <div className="evidence-surface overflow-hidden rounded-[var(--r-md)]">
       {/* Desktop / tablet table */}
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full border-collapse" aria-label={ariaLabel}>

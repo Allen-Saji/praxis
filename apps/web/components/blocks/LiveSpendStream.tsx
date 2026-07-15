@@ -123,7 +123,7 @@ export function LiveSpendStream({ initial }: { initial: SerializedStreamEntry[] 
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-[17px] font-semibold leading-[24px] tracking-[-0.01em] text-[var(--text-hi)]">
-          Live spend stream
+          Decision ledger
         </h2>
         <div className="flex items-center gap-4">
           <span className="inline-flex items-center gap-1.5 text-[13px] text-[var(--text-mid)]">
@@ -137,7 +137,7 @@ export function LiveSpendStream({ initial }: { initial: SerializedStreamEntry[] 
             type="button"
             onClick={() => setLive((v) => !v)}
             aria-pressed={!live}
-            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[var(--r-sm)] border border-white/10 bg-white/5 px-2.5 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-[var(--r-sm)] border border-white/10 bg-white/5 px-3 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             {live ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             {live ? "Pause" : "Resume"}
@@ -149,7 +149,7 @@ export function LiveSpendStream({ initial }: { initial: SerializedStreamEntry[] 
       </div>
 
       <DataTable
-        ariaLabel="Live spend stream"
+        ariaLabel="Agent decision ledger"
         columns={columns}
         rows={entries}
         getRowKey={(e) => streamKey(e)}

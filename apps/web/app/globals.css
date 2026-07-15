@@ -66,6 +66,11 @@
   --risk-high: #ff8a4c;
   --risk-critical: #ff4d63;
 
+  --workspace: #0d0f12;
+  --surface: #12151a;
+  --surface-raised: #171b21;
+  --divider: #292e36;
+
   /* Badge/pill backgrounds, one source of truth so a color retune touches only
      this file. Mirror the risk hexes at low alpha. */
   --risk-low-tint: rgba(47, 224, 142, 0.14);
@@ -103,6 +108,35 @@ body {
   font-size: 15px;
   line-height: 22px;
   font-feature-settings: "cv01", "cv02";
+}
+
+/* Incident-first workspace surfaces. Evidence gets contrast; decoration does not. */
+.evidence-surface {
+  background: var(--surface);
+  border: 1px solid var(--divider);
+}
+
+.incident-surface {
+  background:
+    linear-gradient(90deg, rgba(255, 77, 99, 0.045), transparent 32%),
+    var(--surface);
+  border: 1px solid var(--divider);
+  box-shadow: inset 3px 0 0 var(--risk-critical);
+}
+
+.finding-code {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--risk-critical) 34%, transparent);
+  border-radius: 4px;
+  background: var(--risk-critical-tint);
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--risk-critical);
 }
 
 /* Mono numerics line up by place value */

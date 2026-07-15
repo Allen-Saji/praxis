@@ -14,7 +14,7 @@ interface NavItem {
   match: (path: string) => boolean;
 }
 
-const ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   {
     href: "/app",
     label: "Dashboard",
@@ -40,17 +40,16 @@ export function NavRail() {
   return (
     <nav
       aria-label="Primary"
-      className="flex shrink-0 flex-col gap-1 border-r border-white/5 bg-[rgba(11,13,17,0.4)] p-3 backdrop-blur-xl md:w-52"
+      className="hidden w-52 shrink-0 flex-col gap-1 border-r border-[var(--divider)] bg-[var(--workspace)] p-3 md:flex"
     >
       <Link
         href="/"
-        className="mb-3 flex items-center px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        className="mb-3 flex min-h-11 items-center px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         aria-label="Praxis home"
       >
-        <Wordmark className="hidden text-[20px] md:inline" />
-        <Wordmark monogram className="text-[20px] md:hidden" />
+        <Wordmark className="text-[20px]" />
       </Link>
-      {ITEMS.map((item) => {
+      {NAV_ITEMS.map((item) => {
         const active = item.match(pathname);
         const Icon = item.icon;
         return (
@@ -59,14 +58,14 @@ export function NavRail() {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-[var(--r-sm)] px-2.5 py-2 text-[14px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
+              "flex min-h-11 items-center gap-3 rounded-[var(--r-sm)] px-2.5 py-2 text-[14px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
               active
                 ? "bg-[var(--accent-tint)] text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(0,210,255,0.25)]"
                 : "text-[var(--text-mid)] hover:bg-white/5 hover:text-[var(--text-hi)]",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline">{item.label}</span>
+            <span>{item.label}</span>
           </Link>
         );
       })}
