@@ -21,7 +21,7 @@ export function TabsTrigger({
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "cursor-pointer border-b-2 border-transparent px-3 py-2 text-[14px] font-medium text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-hi)]",
+        "min-h-11 cursor-pointer border-b-2 border-transparent px-3 text-[14px] font-medium text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-hi)]",
         className,
       )}
       {...props}

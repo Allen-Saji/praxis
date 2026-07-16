@@ -189,7 +189,7 @@ export function SpendDetailHeader({ entry }: { entry: SerializedStreamEntry }) {
   const idValue = entry.receiptId ?? entry.blobId;
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <h2 className="text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">Spend</h2>
+      <h1 className="text-[22px] font-semibold leading-[28px] text-[var(--text-hi)]">Spend</h1>
       {entry.receiptId ? (
         <Address value={entry.receiptId} kind="object" head={6} tail={4} />
       ) : (
@@ -205,7 +205,7 @@ export function SpendDetailHeader({ entry }: { entry: SerializedStreamEntry }) {
         }
         target="_blank"
         rel="noopener noreferrer"
-        className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 px-2 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
       >
         {entry.receiptId ? "Suiscan" : "Walrus"}
         <ExternalLink className="h-3.5 w-3.5" />
