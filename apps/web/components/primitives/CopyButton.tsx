@@ -33,7 +33,7 @@ export function CopyButton({
       onClick={onCopy}
       aria-label={copied ? "Copied" : label}
       className={cn(
-        "inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[4px] text-[var(--text-low)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--text-mid)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
+        "inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[4px] text-[var(--text-low)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--text-mid)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
         className,
       )}
     >

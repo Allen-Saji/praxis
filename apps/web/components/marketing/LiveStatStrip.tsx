@@ -8,7 +8,7 @@ import type { SerializedIndexStats } from "@/lib/serialized";
 
 /**
  * Compact live proof strip for the landing page. One inline row of the three
- * AgentIndex counters (drains prevented, spends, blocked rate), live from chain.
+ * AgentIndex counters (blocked decisions, signed spends, intervention rate), live from chain.
  * Replaces the oversized single-number counter block: keeps the "this is real
  * and working on testnet" proof without spotlighting a small number.
  */
@@ -25,11 +25,11 @@ export function LiveStatStrip({ initial }: { initial: SerializedIndexStats }) {
         live on Sui testnet
       </span>
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-7">
-        <Stat value={<CountUp value={stats.totalAborts} />} label="drains prevented" accent />
+        <Stat value={<CountUp value={stats.totalAborts} />} label="blocked decisions" accent />
         <Divider />
-        <Stat value={withThousands(String(stats.totalCount))} label="spends" />
+        <Stat value={withThousands(String(stats.totalCount))} label="signed spends" />
         <Divider />
-        <Stat value={formatPercent(stats.abortRate)} label="blocked" />
+        <Stat value={formatPercent(stats.abortRate)} label="intervention rate" />
       </div>
     </div>
   );

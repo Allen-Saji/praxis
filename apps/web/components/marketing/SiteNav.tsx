@@ -9,7 +9,7 @@ export function SiteNav() {
       <div className="mx-auto flex h-14 w-full max-w-[1080px] items-center justify-between px-5">
         <Link
           href="/"
-          className="flex items-center rounded-[var(--r-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          className="flex min-h-11 items-center rounded-[var(--r-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           aria-label="Praxis home"
         >
           <Wordmark className="text-[20px]" />
@@ -17,22 +17,22 @@ export function SiteNav() {
         <nav className="flex items-center gap-1 text-[14px]" aria-label="Primary">
           <Link
             href="/docs"
-            className="rounded-[var(--r-sm)] px-3 py-1.5 text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex min-h-11 items-center rounded-[var(--r-sm)] px-3 text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             Docs
           </Link>
           <Link
             href="/app"
-            className="rounded-[var(--r-sm)] px-3 py-1.5 text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex min-h-11 items-center rounded-[var(--r-sm)] px-3 text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             Dashboard
           </Link>
           <Link
-            href="https://github.com"
+            href="https://github.com/Allen-Saji/praxis"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"
-            className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="ml-1 inline-flex h-11 w-11 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <Github className="h-4 w-4" />
           </Link>

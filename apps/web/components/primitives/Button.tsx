@@ -20,9 +20,9 @@ const buttonVariants = cva(
           "bg-[var(--risk-critical)] text-[var(--bg)] hover:brightness-110 active:brightness-95",
       },
       size: {
-        sm: "h-8 px-3 text-[13px]",
-        md: "h-10 px-4 text-[14px]",
-        icon: "h-9 w-9 p-0",
+        sm: "h-11 px-3 text-[13px]",
+        md: "h-11 px-4 text-[14px]",
+        icon: "h-11 w-11 p-0",
       },
     },
     defaultVariants: {

@@ -40,7 +40,7 @@ export default function DocsPage() {
                 <a
                   key={step.id}
                   href={`#${step.id}`}
-                  className="rounded-[var(--r-sm)] px-2 py-1 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/5 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  className="inline-flex min-h-11 items-center rounded-[var(--r-sm)] px-2 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/5 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   {step.label}
                 </a>
@@ -54,20 +54,20 @@ export default function DocsPage() {
               <h1 className="text-gradient text-[34px] font-semibold leading-[40px] tracking-tight">
                 Quickstart
               </h1>
-              <p className="text-[15px] leading-[24px] text-[var(--text-mid)]">
+              <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Install, configure a wallet adapter, gate your first spend. Testnet, SUI only in v1.
               </p>
             </header>
 
             <Step id="install" n={1} title="Install">
-              <p className="text-[14px] leading-[22px] text-[var(--text-mid)]">
+              <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Add the SDK and the Sui client to your project.
               </p>
               <CodeBlock tabs={DOCS_INSTALL} />
             </Step>
 
             <Step id="configure" n={2} title="Configure">
-              <p className="text-[14px] leading-[22px] text-[var(--text-mid)]">
+              <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Praxis takes a wallet adapter and never sees a private key. It only receives a
                 signer that signs the transaction it builds.
               </p>
@@ -75,14 +75,14 @@ export default function DocsPage() {
             </Step>
 
             <Step id="simulate" n={3} title="Simulate">
-              <p className="text-[14px] leading-[22px] text-[var(--text-mid)]">
+              <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Dry-run a spend and read the risk-scored report without signing anything.
               </p>
               <CodeBlock tabs={DOCS_SIMULATE} />
             </Step>
 
             <Step id="spend" n={4} title="Spend and gate">
-              <p className="text-[14px] leading-[22px] text-[var(--text-mid)]">
+              <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Gate the spend on the report. Returning false from onReport aborts the spend before
                 it signs, and the abort is recorded with its reasoning.
               </p>
@@ -90,7 +90,7 @@ export default function DocsPage() {
             </Step>
 
             <Step id="audit" n={5} title="Read the audit trail">
-              <p className="text-[14px] leading-[22px] text-[var(--text-mid)]">
+              <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Read receipts and counters with no wallet. Decrypt sealed reasoning as an
                 allowlisted auditor, server-side.
               </p>

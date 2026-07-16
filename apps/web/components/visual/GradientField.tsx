@@ -137,7 +137,8 @@ export function GradientField() {
         uResolution: { value: [gl.canvas.width, gl.canvas.height] },
       },
     });
-    const mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
+    const geometry = new Triangle(gl);
+    const mesh = new Mesh(gl, { geometry, program });
 
     function resize() {
       // Size against the viewport, not canvas.clientWidth: OGL's constructor
@@ -188,8 +189,8 @@ export function GradientField() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibility);
-      const ext = gl.getExtension("WEBGL_lose_context");
-      if (ext) ext.loseContext();
+      geometry.remove();
+      program.remove();
     };
   }, []);
 
@@ -197,7 +198,7 @@ export function GradientField() {
     <canvas
       ref={ref}
       aria-hidden="true"
-      className="fixed inset-0 z-0 h-full w-full"
+      className="pointer-events-none fixed inset-0 -z-10 h-full w-full"
     />
   );
 }

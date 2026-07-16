@@ -370,7 +370,7 @@ Atoms, then molecules, then organisms. Each maps to a file in section 10.
   (on the stream) a "view" affordance, click opens the spend drawer or routes to
   detail. Total count always shown. Mobile: collapses to stacked KeyValue cards.
 - **`LiveSpendStream`** - DataTable bound to a live receipt feed (see §9). New rows
-  fade-slide in one at a time. A small "live" dot pulses while polling is active;
+  fade-slide in one at a time. A small solid "live" dot stays visible while polling is active;
   a pause control freezes the feed for reading.
 - **`StatHeader`** - the row of StatCards above the stream (total spends, abort
   rate, risk distribution, drains prevented featured).
