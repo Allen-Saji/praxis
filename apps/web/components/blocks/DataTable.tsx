@@ -103,7 +103,7 @@ export function DataTable<T>({
                         type="button"
                         onClick={() => toggleSort(col)}
                         className={cn(
-                          "inline-flex cursor-pointer items-center gap-1 transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
+                          "inline-flex min-h-11 min-w-11 cursor-pointer items-center gap-1 transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
                           col.align === "right" && "flex-row-reverse",
                         )}
                       >

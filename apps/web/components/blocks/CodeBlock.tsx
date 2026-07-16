@@ -71,7 +71,7 @@ export function CodeBlock({
               aria-selected={idx === active}
               onClick={() => setActive(idx)}
               className={cn(
-                "cursor-pointer border-b-2 px-3 py-2 text-[12px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
+                "min-h-11 cursor-pointer border-b-2 px-3 text-[12px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]",
                 idx === active
                   ? "border-[var(--accent)] text-[var(--text-hi)]"
                   : "border-transparent text-[var(--text-mid)] hover:text-[var(--text-hi)]",
@@ -81,7 +81,7 @@ export function CodeBlock({
             </button>
           ))}
         </div>
-        <CopyButton value={current.code} label="Copy code" className="mr-1" />
+        <CopyButton value={current.code} label="Copy code" />
       </div>
       <pre className="overflow-x-auto px-4 py-3.5 text-[13px] leading-[22px]">
         <code className="font-mono text-[var(--text-hi)]">{highlight(current.code)}</code>

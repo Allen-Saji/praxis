@@ -40,7 +40,7 @@ export default function DocsPage() {
                 <a
                   key={step.id}
                   href={`#${step.id}`}
-                  className="rounded-[var(--r-sm)] px-2 py-1 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/5 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  className="inline-flex min-h-11 items-center rounded-[var(--r-sm)] px-2 text-[13px] text-[var(--text-mid)] transition-colors duration-150 hover:bg-white/5 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   {step.label}
                 </a>

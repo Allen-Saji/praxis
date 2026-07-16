@@ -42,7 +42,7 @@ export function Address({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Open ${kind} on Suiscan`}
-          className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[4px] text-[var(--text-low)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-[4px] text-[var(--text-low)] transition-colors duration-150 hover:bg-[var(--panel-2)] hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </Link>
