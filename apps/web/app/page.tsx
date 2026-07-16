@@ -34,7 +34,7 @@ export default async function LandingPage() {
       <GradientField />
       <SiteNav />
       <main className="flex-1">
-        <section className="relative flex min-h-[calc(84svh-3.5rem)] w-full flex-col items-center justify-center px-5 pb-[7vh] pt-8">
+        <section className="relative flex min-h-[calc(80svh-3.5rem)] w-full flex-col items-center justify-center px-5 pb-[5vh] pt-8">
           <div className="flex w-full max-w-[920px] flex-col items-center gap-7 text-center">
             <HeroPremium />
           </div>

@@ -23,7 +23,7 @@ export function ProblemSection() {
       className="border-y border-white/[0.07] bg-[rgba(8,10,13,0.82)]"
       aria-labelledby="problem-title"
     >
-      <div className="mx-auto grid w-full max-w-[1080px] gap-12 px-5 py-20 md:grid-cols-[0.82fr_1.18fr] md:gap-16 md:py-28">
+      <div className="mx-auto grid w-full max-w-[1080px] gap-12 px-5 pb-20 pt-12 md:grid-cols-[0.82fr_1.18fr] md:gap-16 md:pb-28 md:pt-16">
         <div>
           <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--risk-critical)]">
             The missing control point
