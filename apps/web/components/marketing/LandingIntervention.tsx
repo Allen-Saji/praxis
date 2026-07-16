@@ -60,7 +60,7 @@ export function LandingIntervention({ entry }: { entry: SerializedStreamEntry })
                 <span className="finding-code">{finding}</span>
               </div>
 
-              <p className="mt-5 max-w-[66ch] text-[15px] leading-6 text-[var(--text-mid)]">
+              <p className="mt-5 max-w-[66ch] text-[16px] leading-7 text-[var(--text-mid)]">
                 {blocked
                   ? reasonPlain(entry.abortReason ?? "")
                   : "The simulation and policy gate passed before the wallet signed."}

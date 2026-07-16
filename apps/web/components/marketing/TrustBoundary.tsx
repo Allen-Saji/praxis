@@ -60,7 +60,7 @@ export function TrustBoundary() {
                 </span>
                 <div>
                   <h3 className="text-[17px] font-semibold leading-6 text-[var(--text-hi)]">{title}</h3>
-                  <p className="mt-1.5 text-[14px] leading-6 text-[var(--text-mid)]">{body}</p>
+                  <p className="mt-1.5 text-[16px] leading-7 text-[var(--text-mid)]">{body}</p>
                 </div>
               </div>
             ))}

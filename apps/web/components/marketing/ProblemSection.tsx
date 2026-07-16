@@ -52,7 +52,7 @@ export function ProblemSection() {
                 <h3 className="text-[18px] font-semibold leading-6 text-[var(--text-hi)]">
                   {mode.title}
                 </h3>
-                <p className="mt-2 max-w-[58ch] text-[15px] leading-6 text-[var(--text-mid)]">
+                <p className="mt-2 max-w-[58ch] text-[16px] leading-7 text-[var(--text-mid)]">
                   {mode.body}
                 </p>
               </div>
