@@ -31,6 +31,9 @@ deployments/*.publish.json
 *.log
 npm-debug.log*
 
+# local gstack artifacts
+.gstack/
+
 # os / editor
 .DS_Store
 .idea/
