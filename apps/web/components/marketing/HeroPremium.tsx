@@ -12,14 +12,12 @@ export function HeroPremium() {
     <>
       <h1
         className="rise text-gradient max-w-[16ch] text-[clamp(40px,6.5vw,68px)] font-semibold leading-[1.04] tracking-[-0.02em]"
-        style={{ animationDelay: "0ms" }}
       >
         A safety layer between your AI agent and its wallet.
       </h1>
 
       <p
         className="rise max-w-[58ch] text-[clamp(16px,1.6vw,19px)] leading-[1.55] text-[var(--text-mid)]"
-        style={{ animationDelay: "120ms" }}
       >
         Praxis simulates and risk-scores every spend before it signs, and writes the
         reasoning to a verifiable audit trail.
@@ -27,7 +25,6 @@ export function HeroPremium() {
 
       <div
         className="rise flex flex-wrap items-center justify-center gap-3"
-        style={{ animationDelay: "180ms" }}
       >
         <Link
           href="/docs"

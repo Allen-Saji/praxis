@@ -30,7 +30,7 @@ export default async function LandingPage() {
   const latestIntervention = stream.find((entry) => entry.status === "aborted");
 
   return (
-    <div className="grain relative z-10 flex min-h-screen flex-col">
+    <div className="grain relative isolate flex min-h-screen flex-col">
       <GradientField />
       <SiteNav />
       <main className="flex-1">
