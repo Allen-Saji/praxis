@@ -265,18 +265,10 @@ body {
   background: transparent;
 }
 
-/* Live dot pulse, gated on reduced-motion */
-@keyframes praxis-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
+/* Static live marker avoids promoting the surrounding toolbar into a flickering
+   compositor layer while long data views scroll. */
 .live-dot {
-  animation: praxis-pulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(47, 224, 142, 0.08);
 }
 
 /* New-row insertion in the live stream: fade + 8px slide, 200ms */
@@ -501,8 +493,5 @@ body {
   .rise {
     opacity: 1;
     transform: none;
-  }
-  .live-dot {
-    animation: none;
   }
 }
