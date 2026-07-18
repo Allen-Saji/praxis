@@ -41,6 +41,7 @@ npm-debug.log*
 
 # local submission draft (kept out of the repo)
 docs/SUBMISSION.md
+docs/DEMO_SCRIPT.md
 
 # vercel
 .vercel
