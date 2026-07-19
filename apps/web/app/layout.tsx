@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { RouteHistory } from "@/components/navigation/RouteHistory";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -74,7 +75,10 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        <RouteHistory />
+        {children}
+      </body>
     </html>
   );
 }

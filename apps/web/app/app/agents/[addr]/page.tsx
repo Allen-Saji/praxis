@@ -2,6 +2,7 @@ import { StatCard } from "@/components/blocks/StatCard";
 import { Address } from "@/components/data/Address";
 import { Timestamp } from "@/components/data/Timestamp";
 import { AgentProfileTabs } from "@/components/blocks/AgentProfileTabs";
+import { BackButton } from "@/components/navigation/BackButton";
 import { getReceiptsByAgent, getAbortsByAgent } from "@/lib/praxis.server";
 import { formatPercent, withThousands } from "@/lib/format";
 
@@ -32,9 +33,12 @@ export default async function AgentProfile({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-[22px] font-semibold leading-[28px] tracking-[-0.01em] text-[var(--text-hi)]">Agent</h1>
-        <Address value={agent} kind="account" head={8} tail={6} />
+      <div className="flex flex-col gap-2">
+        <BackButton fallbackHref="/app/agents" />
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-[22px] font-semibold leading-[28px] tracking-[-0.01em] text-[var(--text-hi)]">Agent</h1>
+          <Address value={agent} kind="account" head={8} tail={6} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

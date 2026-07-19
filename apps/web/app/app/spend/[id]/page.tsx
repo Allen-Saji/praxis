@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { SpendDetail, SpendDetailHeader } from "@/components/blocks/SpendDetail";
+import { BackButton } from "@/components/navigation/BackButton";
 import { getSpendDetail } from "@/lib/praxis.server";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,10 @@ export default async function SpendDetailPage({
 
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-6">
-      <SpendDetailHeader entry={detail.entry} />
+      <div className="flex flex-col gap-2">
+        <BackButton fallbackHref="/app" />
+        <SpendDetailHeader entry={detail.entry} />
+      </div>
       <SpendDetail entry={detail.entry} reasoning={detail.reasoning} />
     </div>
   );
