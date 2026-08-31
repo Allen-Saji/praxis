@@ -1,0 +1,9 @@
+{
+  "name": "@allen-saji/praxis-control-plane",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "tsup", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": { "@mysten/sui": "^2.18.0", "@noble/hashes": "^2.2.0" },
+  "devDependencies": { "@types/node": "^25.9.3", "tsup": "^8.5.1", "typescript": "^5.9.3", "vitest": "^4.1.9" }
+}
