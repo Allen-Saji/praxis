@@ -34,7 +34,7 @@ import type {
 /**
  * How long cached testnet reads stay warm. The dataset is static (no seeder in
  * prod), so this only bounds how "live" the dashboard feels while shielding the
- * public RPC endpoint from the 5s SWR poll multiplied across every viewer.
+ * public chain endpoints from the 5s SWR poll multiplied across every viewer.
  */
 const READ_TTL_MS = 30_000;
 
@@ -44,9 +44,8 @@ function getReader(): PraxisReader {
   if (!reader) {
     reader = new PraxisReader({
       network: "testnet",
-      // Overrides the (now-retired) fullnode.testnet.sui.io default. Falls back
-      // to the SDK's working default when SUI_RPC_URL is unset.
-      rpcUrl: process.env.SUI_RPC_URL,
+      grpcUrl: process.env.SUI_GRPC_URL,
+      graphqlUrl: process.env.SUI_GRAPHQL_URL,
       sealSecret: process.env.PRAXIS_SEAL_SECRET,
     });
   }
@@ -139,38 +138,21 @@ export async function getStream(limit = 50): Promise<SerializedStreamEntry[]> {
  * id is not a Praxis receipt.
  */
 export async function getReceiptById(receiptId: string): Promise<SerializedReceipt | null> {
-  try {
-    const obj = await getReader().client.getObject({
-      id: receiptId,
-      options: { showContent: true },
-    });
-    const content = obj.data?.content as
-      | { dataType?: string; fields?: Record<string, unknown> }
-      | undefined;
-    const fields = content?.fields;
-    if (!fields || content?.dataType !== "moveObject") return null;
-
-    const blobBytes = fields.walrus_blob_id;
-    const blobId = Array.isArray(blobBytes) ? bytesToString(blobBytes as number[]) : "";
-    const sealPolicy = fields.seal_policy_id;
-    const sealed = Array.isArray(sealPolicy) && sealPolicy.length > 0;
-
-    return {
-      receiptId,
-      agent: String(fields.agent ?? ""),
-      wallet: String(fields.wallet ?? ""),
-      recipient: String(fields.recipient ?? ""),
-      amount: String(fields.amount ?? "0"),
-      riskScore: Number(fields.risk_score ?? 0),
-      simPassed: Boolean(fields.sim_passed),
-      sealed,
-      blobId,
-      timestampMs: Number(fields.timestamp_ms ?? 0),
-      status: "confirmed",
-    };
-  } catch {
-    return null;
-  }
+  const receipt = await getReader().receipt(receiptId);
+  if (!receipt) return null;
+  return {
+    receiptId,
+    agent: receipt.agent,
+    wallet: receipt.wallet,
+    recipient: receipt.recipient,
+    amount: String(receipt.amount),
+    riskScore: Number(receipt.risk_score),
+    simPassed: Boolean(receipt.sim_passed),
+    sealed: Boolean(receipt.sealed),
+    blobId: bytesToString(receipt.walrus_blob_id),
+    timestampMs: Number(receipt.timestamp_ms),
+    status: "confirmed",
+  };
 }
 
 /**

@@ -40,7 +40,7 @@ deployments           Recorded testnet package + object ids
 ## How a spend works
 
 `Praxis.spend()` runs: build the transfer, dry-run it with
-`sui_dryRunTransactionBlock`, score the result against the built-in rules, return
+Sui gRPC transaction simulation, score the result against the built-in rules, return
 a report, gate on the recommendation, sign through the wallet adapter, write the
 reasoning to Walrus, and emit an on-chain receipt in one programmable
 transaction. Aborts skip the signing and transfer but still write the reasoning

@@ -7,10 +7,8 @@ import { ViewerProvider } from "./ViewerProvider";
 
 import "@mysten/dapp-kit/dist/index.css";
 
-// Mysten retired public JSON-RPC on fullnode.testnet.sui.io (404s), so point the
-// browser-side wallet client at a working provider. Kept as a literal (not the
-// SDK export) so this client component never pulls the SDK's Node-only modules
-// into the browser bundle. Keep in sync with SUI_RPC_ENDPOINTS in the SDK config.
+// dapp-kit configures its own browser wallet transport. The SDK's server-side
+// audit reader uses gRPC and GraphQL, so this provider remains isolated from it.
 const DEFAULT_TESTNET_RPC = "https://sui-testnet-endpoint.blockvision.org";
 const networks = {
   testnet: {

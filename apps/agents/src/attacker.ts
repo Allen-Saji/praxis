@@ -9,7 +9,7 @@ export async function runAttacker(ctx: AgentContext): Promise<void> {
   console.log("attacker agent (prompt injection)");
   const praxis = makePraxis(ctx);
 
-  const balance = BigInt((await ctx.client.getBalance({ owner: ctx.address })).totalBalance);
+  const balance = BigInt((await ctx.client.getBalance({ owner: ctx.address })).balance.balance);
   // 85% of the wallet in one shot -> trips DRAIN_DETECTED, leaves headroom for gas.
   const amount = (balance * 85n) / 100n;
 

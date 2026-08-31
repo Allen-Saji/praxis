@@ -17,12 +17,16 @@ export { canonicalize, blake3Hex } from "./canonical";
 export {
   DEPLOYMENTS,
   WALRUS_ENDPOINTS,
-  SUI_RPC_ENDPOINTS,
-  resolveRpcUrl,
+  SUI_GRPC_ENDPOINTS,
+  SUI_GRAPHQL_ENDPOINTS,
+  SUI_LEGACY_EVENT_RPC_ENDPOINTS,
+  resolveGrpcUrl,
+  resolveGraphqlUrl,
+  resolveLegacyEventRpcUrl,
   SUI_TYPE,
   type Deployment,
 } from "./config";
-export { makeSuiClient, resilientFetch } from "./rpc";
+export { makeLegacyEventClient, makeSuiClient, resilientFetch } from "./rpc";
 export type {
   Network,
   Privacy,

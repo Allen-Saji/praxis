@@ -30,7 +30,7 @@ export interface RiskOutput {
   recommendation: Recommendation;
 }
 
-const DRAIN_RATIO = 0.8;
+const DRAIN_BPS = 8_000n;
 const DEFAULT_BLOCK_AT = 80;
 const REVIEW_AT = 30;
 const DEFAULT_TYPICAL_GAS = 5_000_000n;
@@ -52,12 +52,12 @@ export function assessRisk(input: RiskInput): RiskOutput {
 
   const outflow = senderOutflow(input.balanceChanges, input.sender, input.coinType);
   if (input.walletBalance > 0n && outflow > 0n) {
-    const ratio = Number(outflow) / Number(input.walletBalance);
-    if (ratio >= DRAIN_RATIO) {
+    if (outflow * 10_000n >= input.walletBalance * DRAIN_BPS) {
+      const roundedPercent = (outflow * 100n + input.walletBalance / 2n) / input.walletBalance;
       risks.push({
         level: "critical",
         code: "DRAIN_DETECTED",
-        message: `This spend moves ${Math.round(ratio * 100)}% of the wallet balance in a single transaction.`,
+        message: `This spend moves ${roundedPercent}% of the wallet balance in a single transaction.`,
       });
       score = Math.max(score, 90);
     }

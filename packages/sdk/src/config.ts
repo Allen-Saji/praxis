@@ -30,31 +30,53 @@ export const DEPLOYMENTS: Record<Network, Deployment> = {
   },
 };
 
+/** Full-node gRPC-web endpoints used for live execution and current state. */
+export const SUI_GRPC_ENDPOINTS: Record<Network, string> = {
+  testnet: "https://fullnode.testnet.sui.io:443",
+  mainnet: "https://fullnode.mainnet.sui.io:443",
+};
+
+/** Sui GraphQL endpoints used for historical event feeds. */
+export const SUI_GRAPHQL_ENDPOINTS: Record<Network, string> = {
+  testnet: "https://graphql.testnet.sui.io/graphql",
+  mainnet: "https://graphql.mainnet.sui.io/graphql",
+};
+
 /**
- * Default JSON-RPC endpoints. Mysten retired public JSON-RPC on
- * `fullnode.<net>.sui.io` (it returns 404 as of 2026-07), yet the SDK helper
- * `getJsonRpcFullnodeUrl` still points there, which broke every read. We carry
- * our own working defaults instead. Testnet uses a provider that still serves
- * full historical events (queryEvents), which the reader depends on; the common
- * public nodes prune event history and cannot reconstruct older receipts.
- * Override per instance with the `rpcUrl` option, or globally with the
- * `SUI_RPC_URL` env var (server) / `NEXT_PUBLIC_SUI_RPC_URL` (browser).
+ * Transitional event-history provider for Testnet records predating Sui
+ * GraphQL retention. New control-plane records will live in PostgreSQL, which
+ * removes this compatibility path before mainnet release.
  */
-export const SUI_RPC_ENDPOINTS: Record<Network, string> = {
+export const SUI_LEGACY_EVENT_RPC_ENDPOINTS: Record<Network, string> = {
   testnet: "https://sui-testnet-endpoint.blockvision.org",
   mainnet: "https://sui-mainnet-endpoint.blockvision.org",
 };
 
 /**
- * Resolve the RPC url for a network: explicit override > SUI_RPC_URL env >
- * built-in default. The `process` guard keeps this safe in the browser bundle,
- * where env reads happen at build time via NEXT_PUBLIC_ vars instead.
+ * Resolve a gRPC endpoint: explicit override > SUI_GRPC_URL env > built-in
+ * default. The `process` guard keeps this safe in browser bundles.
  */
-export function resolveRpcUrl(network: Network, override?: string): string {
+export function resolveGrpcUrl(network: Network, override?: string): string {
   if (override) return override;
   const fromEnv =
-    typeof process !== "undefined" ? process.env?.SUI_RPC_URL : undefined;
-  return fromEnv || SUI_RPC_ENDPOINTS[network];
+    typeof process !== "undefined" ? process.env?.SUI_GRPC_URL : undefined;
+  return fromEnv || SUI_GRPC_ENDPOINTS[network];
+}
+
+/** Resolve a GraphQL endpoint: explicit override > SUI_GRAPHQL_URL env > default. */
+export function resolveGraphqlUrl(network: Network, override?: string): string {
+  if (override) return override;
+  const fromEnv =
+    typeof process !== "undefined" ? process.env?.SUI_GRAPHQL_URL : undefined;
+  return fromEnv || SUI_GRAPHQL_ENDPOINTS[network];
+}
+
+/** Resolve the temporary historical-event provider endpoint. */
+export function resolveLegacyEventRpcUrl(network: Network, override?: string): string {
+  if (override) return override;
+  const fromEnv =
+    typeof process !== "undefined" ? process.env?.SUI_LEGACY_EVENT_RPC_URL : undefined;
+  return fromEnv || SUI_LEGACY_EVENT_RPC_ENDPOINTS[network];
 }
 
 export const WALRUS_ENDPOINTS: Record<Network, { publisher: string; aggregator: string }> = {

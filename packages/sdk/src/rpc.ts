@@ -1,14 +1,11 @@
+import { GrpcWebFetchTransport, SuiGrpcClient } from "@mysten/sui/grpc";
 import { JsonRpcHTTPTransport, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { resolveRpcUrl } from "./config";
+import { resolveGrpcUrl, resolveLegacyEventRpcUrl } from "./config";
 import type { Network } from "./types";
 
 /**
- * Resilient Sui JSON-RPC client. Mysten retired public JSON-RPC on
- * fullnode.<net>.sui.io, so reads run against a public provider that still
- * serves full event history but rate-limits bursts. A single dashboard load
- * fires several reads at once, which would 429. To keep the view reliable this
- * client uses a custom fetch that (1) caps in-flight requests and (2) retries
- * 429/5xx with exponential backoff + jitter, honoring Retry-After.
+ * Resilient fetch for Sui gRPC-web and GraphQL. A dashboard load fires several
+ * reads at once, so it caps concurrency and retries transient HTTP failures.
  */
 
 const MAX_CONCURRENT = 2;
@@ -50,7 +47,7 @@ function backoffMs(attempt: number, retryAfter: string | null): number {
   return Math.min(base + base * 0.25 * Math.random(), MAX_BACKOFF_MS);
 }
 
-/** A fetch that gates concurrency and retries transient RPC failures. */
+/** A fetch that gates concurrency and retries transient transport failures. */
 export function resilientFetch(limit = MAX_CONCURRENT): typeof fetch {
   const acquire = createGate(limit);
   const wrapped = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -79,11 +76,25 @@ export function resilientFetch(limit = MAX_CONCURRENT): typeof fetch {
   return wrapped as typeof fetch;
 }
 
-/** Build the default resilient client for a network (with optional url override). */
-export function makeSuiClient(network: Network, rpcUrl?: string): SuiJsonRpcClient {
-  const transport = new JsonRpcHTTPTransport({
-    url: resolveRpcUrl(network, rpcUrl),
+/** Build the default resilient gRPC client for a network. */
+export function makeSuiClient(network: Network, grpcUrl?: string): SuiGrpcClient {
+  const transport = new GrpcWebFetchTransport({
+    baseUrl: resolveGrpcUrl(network, grpcUrl),
     fetch: resilientFetch(),
   });
-  return new SuiJsonRpcClient({ transport, network });
+  return new SuiGrpcClient({ transport, network });
+}
+
+/**
+ * Transitional read-only event client for records outside official GraphQL
+ * retention. Do not use this for execution, simulation, or control-plane data.
+ */
+export function makeLegacyEventClient(network: Network, rpcUrl?: string): SuiJsonRpcClient {
+  return new SuiJsonRpcClient({
+    network,
+    transport: new JsonRpcHTTPTransport({
+      url: resolveLegacyEventRpcUrl(network, rpcUrl),
+      fetch: resilientFetch(),
+    }),
+  });
 }

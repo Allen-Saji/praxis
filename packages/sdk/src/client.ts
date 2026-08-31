@@ -1,4 +1,4 @@
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import type { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { hexToBytes } from "@noble/hashes/utils.js";
@@ -32,9 +32,9 @@ const ABORT_REASON_CODE: Record<AbortReason, number> = {
 export interface PraxisOptions {
   network?: Network;
   wallet: WalletAdapter;
-  client?: SuiJsonRpcClient;
-  /** Override the JSON-RPC url (else SUI_RPC_URL env, else the network default). */
-  rpcUrl?: string;
+  client?: SuiGrpcClient;
+  /** Override the gRPC endpoint (else SUI_GRPC_URL env, else the network default). */
+  grpcUrl?: string;
   deployment?: Partial<Deployment>;
   policy?: SpendingPolicy;
   walrus?: { publisher?: string; aggregator?: string; epochs?: number; localFallbackDir?: string };
@@ -49,7 +49,7 @@ export interface PraxisOptions {
  */
 export class Praxis {
   readonly network: Network;
-  readonly client: SuiJsonRpcClient;
+  readonly client: SuiGrpcClient;
   readonly deployment: Deployment;
   /** Read-only data surface; the dashboard can use the same class directly. */
   readonly reader: PraxisReader;
@@ -62,7 +62,7 @@ export class Praxis {
 
   constructor(opts: PraxisOptions) {
     this.network = opts.network ?? "testnet";
-    this.client = opts.client ?? makeSuiClient(this.network, opts.rpcUrl);
+    this.client = opts.client ?? makeSuiClient(this.network, opts.grpcUrl);
     this.deployment = { ...DEPLOYMENTS[this.network], ...opts.deployment };
     this.wallet = opts.wallet;
     this.policy = opts.policy;
@@ -92,27 +92,30 @@ export class Praxis {
   async simulate(args: SimulateArgs): Promise<SimulationReport> {
     const coinType = args.coinType ?? SUI_TYPE;
     assertSui(coinType);
+    assertSpendAmount(args.amount);
     const sender = await this.wallet.address();
     const agent = args.agent ? normalizeSuiAddress(args.agent) : sender;
-    return this.runSimulation(sender, agent, args.to, args.amount, coinType);
+    return this.runSimulation(sender, agent, normalizeRecipient(args.to), args.amount, coinType);
   }
 
   /** Full flow: intent -> simulate -> report -> gate -> sign -> log -> receipt. */
   async spend(args: SpendArgs): Promise<SpendResult> {
     const coinType = args.coinType ?? SUI_TYPE;
     assertSui(coinType);
+    assertSpendAmount(args.amount);
     const wallet = await this.wallet.address();
     const agent = args.agent ? normalizeSuiAddress(args.agent) : wallet;
+    const spendArgs = { ...args, to: normalizeRecipient(args.to) };
 
-    const report = await this.runSimulation(wallet, agent, args.to, args.amount, coinType);
+    const report = await this.runSimulation(wallet, agent, spendArgs.to, spendArgs.amount, coinType);
 
-    const gate = await this.decide(report, args);
+    const gate = await this.decide(report, spendArgs);
     const ts = Date.now();
     const blob = this.buildBlob({
       type: gate.proceed ? "spend" : "abort",
       agent,
       wallet,
-      args,
+      args: spendArgs,
       coinType,
       report,
       ts,
@@ -122,8 +125,8 @@ export class Praxis {
     // Reasoning is written to Walrus for BOTH outcomes -- the abort IS the audit trail.
     let sealPolicyId = "";
     let stored: unknown = blob;
-    if (args.privacy === "sealed") {
-      const auditors = args.auditors ?? [wallet];
+    if (spendArgs.privacy === "sealed") {
+      const auditors = spendArgs.auditors ?? [wallet];
       const sealed: SealedBlob = await this.sealer.seal(
         new TextEncoder().encode(canonicalize(blob)),
         auditors,
@@ -136,8 +139,8 @@ export class Praxis {
     if (!gate.proceed) {
       await this.recordAbort(
         agent,
-        args.to,
-        args.amount,
+        spendArgs.to,
+        spendArgs.amount,
         blobId,
         gate.abortReason ?? "agent_decision",
         report.riskScore,
@@ -151,12 +154,12 @@ export class Praxis {
     }
 
     const purposeTag = blake3Hex(
-      canonicalize({ agent, to: args.to, amount: args.amount.toString(), coinType, ts }),
+      canonicalize({ agent, to: spendArgs.to, amount: spendArgs.amount.toString(), coinType, ts }),
     );
     const { digest, receiptId } = await this.executeSpend({
       agent,
-      to: args.to,
-      amount: args.amount,
+      to: spendArgs.to,
+      amount: spendArgs.amount,
       coinType,
       blobId,
       sealPolicyId,
@@ -165,7 +168,7 @@ export class Praxis {
       purposeTag,
     });
 
-    this.spentToday.set(agent, (this.spentToday.get(agent) ?? 0n) + args.amount);
+    this.spentToday.set(agent, (this.spentToday.get(agent) ?? 0n) + spendArgs.amount);
     return {
       status: "confirmed",
       receiptId,
@@ -188,17 +191,18 @@ export class Praxis {
     const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
     tx.transferObjects([coin], tx.pure.address(to));
     tx.setSender(wallet);
-    const bytes = await tx.build({ client: this.client });
-    const dry = await this.client.dryRunTransactionBlock({ transactionBlock: bytes });
-
-    const status = dry.effects?.status?.status;
-    const success = status === "success";
+    const simulated = await this.client.simulateTransaction({
+      transaction: tx,
+      include: { balanceChanges: true, effects: true },
+    });
+    const dry = transactionResult(simulated);
+    const success = dry.status.success;
     const balanceChanges: BalanceDelta[] = (dry.balanceChanges ?? []).map((bc) => ({
-      owner: ownerAddress(bc.owner),
+      owner: bc.address,
       coinType: bc.coinType,
       amount: bc.amount,
     }));
-    const gasEstimate = computeGas(dry.effects?.gasUsed);
+    const gasEstimate = computeGas(dry.effects?.gasUsed ?? undefined);
     const walletBalance = await this.getBalance(wallet, coinType);
 
     const risk = assessRisk({
@@ -282,19 +286,22 @@ export class Praxis {
     });
 
     const signed = await this.wallet.signTransaction(tx);
-    const res = await this.client.executeTransactionBlock({
-      transactionBlock: signed.bytes,
-      signature: signed.signature,
-      options: { showEffects: true, showObjectChanges: true, showEvents: true },
-    });
-    if (res.effects?.status?.status !== "success") {
-      throw new Error(`spend tx failed: ${res.effects?.status?.error ?? "unknown"}`);
-    }
-    const created = res.objectChanges?.find(
-      (o) => o.type === "created" && o.objectType.includes("spending_receipt::SpendingReceipt"),
+    const res = transactionResult(
+      await this.client.executeTransaction({
+        transaction: base64Bytes(signed.bytes),
+        signatures: [signed.signature],
+        include: { effects: true, objectTypes: true, events: true },
+      }),
     );
-    const receiptId = created && created.type === "created" ? created.objectId : undefined;
-    return { digest: res.digest, receiptId };
+    if (!res.status.success) {
+      throw new Error(`spend tx failed: ${executionErrorMessage(res.status.error)}`);
+    }
+    const created = res.effects?.changedObjects.find(
+      (o) =>
+        o.idOperation === "Created" &&
+        res.objectTypes?.[o.objectId]?.includes("spending_receipt::SpendingReceipt"),
+    );
+    return { digest: res.digest, receiptId: created?.objectId };
   }
 
   private async recordAbort(
@@ -321,11 +328,16 @@ export class Praxis {
       ],
     });
     const signed = await this.wallet.signTransaction(tx);
-    await this.client.executeTransactionBlock({
-      transactionBlock: signed.bytes,
-      signature: signed.signature,
-      options: { showEffects: true },
-    });
+    const res = transactionResult(
+      await this.client.executeTransaction({
+        transaction: base64Bytes(signed.bytes),
+        signatures: [signed.signature],
+        include: { effects: true },
+      }),
+    );
+    if (!res.status.success) {
+      throw new Error(`abort receipt tx failed: ${executionErrorMessage(res.status.error)}`);
+    }
   }
 
   private buildBlob(p: {
@@ -369,12 +381,8 @@ export class Praxis {
   }
 
   private async getBalance(owner: string, coinType: string): Promise<bigint> {
-    try {
-      const b = await this.client.getBalance({ owner, coinType });
-      return BigInt(b.totalBalance);
-    } catch {
-      return 0n;
-    }
+    const b = await this.client.getBalance({ owner, coinType });
+    return BigInt(b.balance.balance);
   }
 }
 
@@ -384,18 +392,43 @@ function assertSui(coinType: string): void {
   }
 }
 
+function assertSpendAmount(amount: bigint): void {
+  if (amount <= 0n || amount > 18_446_744_073_709_551_615n) {
+    throw new Error("amount must be a positive u64 value");
+  }
+}
+
+function normalizeRecipient(address: string): string {
+  try {
+    return normalizeSuiAddress(address);
+  } catch {
+    throw new Error("recipient must be a valid Sui address");
+  }
+}
+
 function utf8Bytes(s: string): number[] {
   return Array.from(new TextEncoder().encode(s));
 }
 
-function ownerAddress(owner: unknown): string {
-  if (owner && typeof owner === "object" && "AddressOwner" in owner) {
-    return (owner as { AddressOwner: string }).AddressOwner;
+function base64Bytes(value: string): Uint8Array {
+  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(value, "base64"));
+  const decoded = atob(value);
+  return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
+}
+
+function transactionResult<T extends { $kind: "Transaction" | "FailedTransaction"; Transaction?: unknown; FailedTransaction?: unknown }>(
+  result: T,
+): NonNullable<T["Transaction"]> {
+  return (result.$kind === "Transaction" ? result.Transaction : result.FailedTransaction) as NonNullable<
+    T["Transaction"]
+  >;
+}
+
+function executionErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
   }
-  if (owner && typeof owner === "object" && "ObjectOwner" in owner) {
-    return (owner as { ObjectOwner: string }).ObjectOwner;
-  }
-  return "";
+  return "unknown";
 }
 
 function computeGas(gasUsed?: {

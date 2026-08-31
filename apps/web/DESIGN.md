@@ -394,7 +394,7 @@ Atoms, then molecules, then organisms. Each maps to a file in section 10.
 ## 9. Real-Data Sources (per view)
 
 Hard constraint: no mock data anywhere. Every view binds to live testnet data via
-`@allen-saji/praxis`, Sui RPC, or the Walrus aggregator. The exact wiring, read straight
+`@allen-saji/praxis`, Sui gRPC and GraphQL, or the Walrus aggregator. The exact wiring, read straight
 from the SDK and the Move package already deployed at
 `packageId 0xb9e95d52...e32d`, `agentIndexId 0x42780ec3...69d7` (testnet):
 
@@ -403,10 +403,10 @@ from the SDK and the Move package already deployed at
 | "Drains prevented" counter | `AgentIndex.total_aborts` | `suiClient.getObject(agentIndexId)` then read the `total_aborts` field. Also exposed via the `record_abort` event count. |
 | "Total spends" | `AgentIndex.total_count` | same `getObject` read. |
 | "Abort rate" | derived | `total_aborts / (total_aborts + total_count)`. |
-| Live spend stream | `SpendingReceiptCreated` events | `praxis.audit.recent(limit)` -> `queryEvents({ MoveEventType: \`${packageId}::spending_receipt::SpendingReceiptCreated\`, order: "descending" })`. Each event is a `ReceiptEvent`. Poll on an interval for "live"; later swap to a subscription if available. |
+| Live spend stream | `SpendingReceiptCreated` events | `praxis.audit.recent(limit)` queries the Sui GraphQL event connection, paginates backward, then returns newest first. Existing pre-GraphQL-retention Testnet data uses the SDK's named read-only compatibility provider until the Phase 1 PostgreSQL audit log replaces it. Each event is a `ReceiptEvent`. Poll on an interval for "live"; later swap to a subscription if available. |
 | Per-agent cards / list | distinct agents from receipts | derive the agent set from `audit.recent`, or `agent_registry::agent_receipt_count(index, agent)` for an exact per-agent count. |
 | Agent profile spend history | `audit.byAgent(agent)` | filters `SpendingReceiptCreated` events by `agent`. |
-| Agent abort timeline | `AbortRecorded` events | `queryEvents({ MoveEventType: \`${packageId}::agent_registry::AbortRecorded\` })`, filter by `agent`. Fields: `walrus_blob_id`, `reason_code` (0 agent_decision, 1 policy_block, 2 high_risk, 3 sim_failed), `risk_score`, `timestamp_ms`. |
+| Agent abort timeline | `AbortRecorded` events | Sui GraphQL event query, filtered by event type then filtered by `agent`, with the same temporary read-only historical fallback. Fields: `walrus_blob_id`, `reason_code` (0 agent_decision, 1 policy_block, 2 high_risk, 3 sim_failed), `risk_score`, `timestamp_ms`. |
 | Spend detail header | the `ReceiptEvent` for that receipt | from the stream/profile query, or `getObject(receiptId)` for the full `SpendingReceipt` (adds `coin_type`, `seal_policy_id`, `purpose_tag`, `sdk_version`). |
 | Reasoning chain (prompt/decision/model) | Walrus blob | decode `walrus_blob_id` (bytes -> utf8 string), fetch from the aggregator `https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blobId}`, parse `ReasoningBlob` v2. `local:`-prefixed ids read from the local fallback (dev only). |
 | Simulation report | same Walrus blob | `ReasoningBlob.simulation` (success, balance_changes, gas_estimate, risk_score, risks, recommendation) plus `policy_check`. |
@@ -416,8 +416,9 @@ from the SDK and the Move package already deployed at
 | Network badge | `DEPLOYMENTS.testnet` | from SDK config; warns if `packageId` is `0x0`. |
 
 Data access pattern for the web app: do not put a private key in the browser. The
-dashboard is read-and-decrypt only, so it uses a read-only `SuiJsonRpcClient`
-(public testnet fullnode), direct Walrus aggregator fetches, and `audit.reveal`
+dashboard is read-and-decrypt only, so it uses the SDK's read-only Sui gRPC and
+GraphQL clients, a temporary historical-event compatibility provider for old
+Testnet records, direct Walrus aggregator fetches, and `audit.reveal`
 gated by the connected viewer address. The signing paths (`spend`, `record_abort`)
 live only in the SDK on the agent side, never in the dashboard.
 
@@ -483,7 +484,7 @@ apps/web/
       SiteNav.tsx
       SiteFooter.tsx
   lib/
-    praxis.ts                   # read-only Praxis/SuiJsonRpcClient + audit helpers
+    praxis.ts                   # read-only Praxis gRPC/GraphQL + audit helpers
     walrus.ts                   # aggregator fetch + ReasoningBlob parse + local fallback
     format.ts                   # mist->SUI, address truncation, blob-bytes->string
     explorer.ts                 # suiscan/suivision link builders by kind
@@ -752,8 +753,8 @@ Informed by the references above and the product's compliance posture.
 1. Viewer identity for decrypt: does the dashboard connect a Sui wallet (zkLogin
    per the README) to supply the `viewer` address for `audit.reveal`, or is the
    viewer set some other way in v1? The decrypt allowlist gate depends on this.
-2. Live feed: poll `queryEvents` on an interval (simplest, ships now), or is there
-   a websocket/subscription on the chosen RPC we should design the "live" dot
+2. Live feed: poll GraphQL events on an interval (simplest, ships now), or is there
+   a websocket/subscription on the chosen transport we should design the "live" dot
    around?
 3. Agent list source: derive distinct agents from recent receipts (cheap, bounded
    by query limit), or do we want an indexer so the agent list is complete rather

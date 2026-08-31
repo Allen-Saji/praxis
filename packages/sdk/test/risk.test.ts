@@ -40,6 +40,17 @@ describe("assessRisk", () => {
     expect(r.recommendation).toBe("abort");
   });
 
+  it("does not round a sub-threshold large balance into a drain", () => {
+    const balance = 10n ** 30n;
+    const r = assessRisk(
+      base({
+        walletBalance: balance,
+        balanceChanges: [{ owner: SENDER, coinType: SUI, amount: `-${balance * 8n / 10n - 1n}` }],
+      }),
+    );
+    expect(r.risks.some((x) => x.code === "DRAIN_DETECTED")).toBe(false);
+  });
+
   it("blocks a failed simulation", () => {
     const r = assessRisk(base({ simSuccess: false }));
     expect(r.risks.some((x) => x.code === "SIM_FAILED")).toBe(true);

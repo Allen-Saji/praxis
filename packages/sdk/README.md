@@ -87,7 +87,7 @@ const stream = await reader.stream(50); // confirmed + aborted, interleaved
 
 ## What runs on Sui
 
-- `sui_dryRunTransactionBlock` for pre-flight simulation of every spend.
+- Sui gRPC transaction simulation for pre-flight simulation of every spend.
 - Walrus for the reasoning and simulation blobs (spends and blocks alike).
 - Move objects: `SpendingReceipt`, `AgentIndex`, `SpendingPolicy`.
 - The coin transfer, receipt creation, and index update happen atomically in one

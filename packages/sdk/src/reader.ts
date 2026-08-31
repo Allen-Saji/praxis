@@ -1,7 +1,15 @@
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import type { SuiGraphQLClient } from "@mysten/sui/graphql";
+import { SuiGraphQLClient as GraphQLClient } from "@mysten/sui/graphql";
+import type { SuiGrpcClient } from "@mysten/sui/grpc";
+import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
-import { DEPLOYMENTS, WALRUS_ENDPOINTS, type Deployment } from "./config";
-import { makeSuiClient } from "./rpc";
+import {
+  DEPLOYMENTS,
+  WALRUS_ENDPOINTS,
+  resolveGraphqlUrl,
+  type Deployment,
+} from "./config";
+import { makeLegacyEventClient, makeSuiClient, resilientFetch } from "./rpc";
 import { LocalSealer, type SealedBlob, type Sealer } from "./seal";
 import { WalrusStore } from "./walrus";
 import type { Network, ReasoningBlob } from "./types";
@@ -71,9 +79,15 @@ export type ReasoningResult =
 
 export interface PraxisReaderOptions {
   network?: Network;
-  client?: SuiJsonRpcClient;
-  /** Override the JSON-RPC url (else SUI_RPC_URL env, else the network default). */
-  rpcUrl?: string;
+  client?: SuiGrpcClient;
+  graphqlClient?: SuiGraphQLClient;
+  legacyEventClient?: SuiJsonRpcClient;
+  /** Override the gRPC endpoint (else SUI_GRPC_URL env, else the network default). */
+  grpcUrl?: string;
+  /** Override the GraphQL endpoint (else SUI_GRAPHQL_URL env, else the network default). */
+  graphqlUrl?: string;
+  /** Temporary provider override for pre-GraphQL historical events. */
+  legacyEventRpcUrl?: string;
   deployment?: Partial<Deployment>;
   walrusStore?: WalrusStore;
   walrus?: { publisher?: string; aggregator?: string; localFallbackDir?: string };
@@ -89,14 +103,25 @@ export interface PraxisReaderOptions {
  */
 export class PraxisReader {
   readonly network: Network;
-  readonly client: SuiJsonRpcClient;
+  readonly client: SuiGrpcClient;
   readonly deployment: Deployment;
+  private graphql: SuiGraphQLClient;
+  private legacyEvents: SuiJsonRpcClient;
   private walrus: WalrusStore;
   private sealer: Sealer;
 
   constructor(opts: PraxisReaderOptions = {}) {
     this.network = opts.network ?? "testnet";
-    this.client = opts.client ?? makeSuiClient(this.network, opts.rpcUrl);
+    this.client = opts.client ?? makeSuiClient(this.network, opts.grpcUrl);
+    this.graphql =
+      opts.graphqlClient ??
+      new GraphQLClient({
+        network: this.network,
+        url: resolveGraphqlUrl(this.network, opts.graphqlUrl),
+        fetch: resilientFetch(),
+      });
+    this.legacyEvents =
+      opts.legacyEventClient ?? makeLegacyEventClient(this.network, opts.legacyEventRpcUrl);
     this.deployment = { ...DEPLOYMENTS[this.network], ...opts.deployment };
     const wep = WALRUS_ENDPOINTS[this.network];
     this.walrus =
@@ -112,10 +137,10 @@ export class PraxisReader {
   /** On-chain totals from the shared AgentIndex object. */
   async indexStats(): Promise<IndexStats> {
     const obj = await this.client.getObject({
-      id: this.deployment.agentIndexId,
-      options: { showContent: true },
+      objectId: this.deployment.agentIndexId,
+      include: { json: true },
     });
-    const fields = (obj.data?.content as { fields?: Record<string, string> })?.fields;
+    const fields = obj.object.json as Record<string, unknown> | null;
     const totalCount = Number(fields?.total_count ?? 0);
     const totalAborts = Number(fields?.total_aborts ?? 0);
     const denom = totalCount + totalAborts;
@@ -124,14 +149,10 @@ export class PraxisReader {
 
   /** Most recent confirmed-spend receipts, newest first. */
   async recent(limit = 50): Promise<ReceiptEvent[]> {
-    const events = await this.client.queryEvents({
-      query: {
-        MoveEventType: `${this.deployment.packageId}::spending_receipt::SpendingReceiptCreated`,
-      },
+    return this.eventsOfType<ReceiptEvent>(
+      `${this.deployment.packageId}::spending_receipt::SpendingReceiptCreated`,
       limit,
-      order: "descending",
-    });
-    return events.data.map((e) => e.parsedJson as ReceiptEvent);
+    );
   }
 
   async byAgent(agent: string, limit = 200): Promise<ReceiptEvent[]> {
@@ -141,12 +162,10 @@ export class PraxisReader {
 
   /** Most recent blocked spends (the "drains prevented" feed), newest first. */
   async aborts(limit = 100): Promise<AbortEvent[]> {
-    const events = await this.client.queryEvents({
-      query: { MoveEventType: `${this.deployment.packageId}::agent_registry::AbortRecorded` },
+    return this.eventsOfType<AbortEvent>(
+      `${this.deployment.packageId}::agent_registry::AbortRecorded`,
       limit,
-      order: "descending",
-    });
-    return events.data.map((e) => e.parsedJson as AbortEvent);
+    );
   }
 
   async abortsByAgent(agent: string, limit = 200): Promise<AbortEvent[]> {
@@ -193,6 +212,30 @@ export class PraxisReader {
     return entries.slice(0, limit);
   }
 
+  /** Fetch a receipt object for a deep link without relying on an event window. */
+  async receipt(receiptId: string): Promise<ReceiptEvent | null> {
+    try {
+      const obj = await this.client.getObject({ objectId: receiptId, include: { json: true } });
+      const fields = obj.object.json as Record<string, unknown> | null;
+      if (!fields || !obj.object.type.includes("spending_receipt::SpendingReceipt")) return null;
+      const sealPolicy = byteVector(fields.seal_policy_id);
+      return {
+        receipt_id: receiptId,
+        agent: String(fields.agent ?? ""),
+        wallet: String(fields.wallet ?? ""),
+        recipient: String(fields.recipient ?? ""),
+        amount: String(fields.amount ?? "0"),
+        risk_score: Number(fields.risk_score ?? 0),
+        sim_passed: Boolean(fields.sim_passed),
+        sealed: sealPolicy.length > 0,
+        walrus_blob_id: byteVector(fields.walrus_blob_id),
+        timestamp_ms: String(fields.timestamp_ms ?? "0"),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   /** Fetch a reasoning blob. Sealed blobs return a marker, not plaintext. */
   async reasoning(blobId: string): Promise<ReasoningResult> {
     const raw = await this.walrus.readJson<SealedBlob | ReasoningBlob>(blobId);
@@ -207,6 +250,70 @@ export class PraxisReader {
     const plaintext = await this.sealer.reveal(raw, viewer);
     return JSON.parse(new TextDecoder().decode(plaintext)) as ReasoningBlob;
   }
+
+  private async eventsOfType<T>(type: string, limit: number): Promise<T[]> {
+    const wanted = Math.max(1, Math.min(Math.floor(limit), 500));
+    const values: Array<{ event: T; timestamp: string }> = [];
+    let before: string | null = null;
+
+    while (values.length < wanted) {
+      const pageSize = Math.min(50, wanted - values.length);
+      const result = (await this.graphql.query({
+        query: EVENTS_QUERY,
+        variables: { type, last: pageSize, before },
+      })) as { data?: EventQueryResult; errors?: Array<{ message: string }> };
+      if (result.errors?.length) {
+        throw new Error(`event query failed: ${result.errors.map((error) => error.message).join("; ")}`);
+      }
+      const events = result.data?.events;
+      if (!events) break;
+      for (const node of events.nodes) {
+        if (node.contents?.json && typeof node.contents.json === "object") {
+          values.push({
+            event: normalizeEvent(node.contents.json as Record<string, unknown>) as T,
+            timestamp: node.timestamp ?? "",
+          });
+        }
+      }
+      if (!events.pageInfo.hasPreviousPage || !events.pageInfo.startCursor) break;
+      before = events.pageInfo.startCursor;
+    }
+
+    const sorted = values
+      .sort((a, b) => timestampMs(b.timestamp) - timestampMs(a.timestamp))
+      .slice(0, wanted)
+      .map((value) => value.event);
+    if (sorted.length > 0) return sorted;
+
+    const legacy = await this.legacyEvents.queryEvents({
+      query: { MoveEventType: type },
+      limit: wanted,
+      order: "descending",
+    });
+    return legacy.data.map((event) => normalizeEvent(event.parsedJson as Record<string, unknown>) as T);
+  }
+}
+
+const EVENTS_QUERY = `
+  query PraxisEvents($type: String!, $last: Int!, $before: String) {
+    events(last: $last, before: $before, filter: { type: $type }) {
+      pageInfo { hasPreviousPage startCursor }
+      nodes { timestamp contents { json } }
+    }
+  }
+`;
+
+interface EventQueryVariables {
+  type: string;
+  last: number;
+  before: string | null;
+}
+
+interface EventQueryResult {
+  events: {
+    pageInfo: { hasPreviousPage: boolean; startCursor: string | null };
+    nodes: Array<{ timestamp: string | null; contents: { json: unknown } | null }>;
+  } | null;
 }
 
 function isSealed(v: SealedBlob | ReasoningBlob): v is SealedBlob {
@@ -219,4 +326,26 @@ function safeNorm(a: string): string {
   } catch {
     return a;
   }
+}
+
+function normalizeEvent(fields: Record<string, unknown>): Record<string, unknown> {
+  const timestamp = fields.timestamp_ms;
+  return {
+    ...fields,
+    walrus_blob_id: byteVector(fields.walrus_blob_id),
+    timestamp_ms: timestamp == null ? "0" : String(timestamp),
+  };
+}
+
+function byteVector(value: unknown): number[] {
+  if (Array.isArray(value)) return value.map((item) => Number(item));
+  if (typeof value !== "string") return [];
+  if (typeof Buffer !== "undefined") return Array.from(Buffer.from(value, "base64"));
+  const decoded = atob(value);
+  return Array.from(decoded, (char) => char.charCodeAt(0));
+}
+
+function timestampMs(value: string): number {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }

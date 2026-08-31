@@ -1,5 +1,5 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import type { SuiGrpcClient } from "@mysten/sui/grpc";
 import { blake3Hex, KeypairAdapter, Praxis, makeSuiClient } from "@allen-saji/praxis";
 import type { SpendArgs, SpendingPolicy, SpendResult } from "@allen-saji/praxis";
 
@@ -32,7 +32,7 @@ export function sui(amount: number): bigint {
 
 export interface AgentContext {
   keypair: Ed25519Keypair;
-  client: SuiJsonRpcClient;
+  client: SuiGrpcClient;
   wallet: KeypairAdapter;
   address: string;
 }

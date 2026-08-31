@@ -9,8 +9,7 @@
  * The key is read from env and never logged.
  */
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { KeypairAdapter, Praxis, resolveRpcUrl } from "../src/index";
+import { KeypairAdapter, Praxis, makeSuiClient } from "../src/index";
 
 const RECIPIENT = "0x00000000000000000000000000000000000000000000000000000000000b0b01";
 const SUI = 1_000_000_000n; // 1 SUI in MIST
@@ -20,7 +19,7 @@ async function main() {
   if (!key) throw new Error("set PRAXIS_OPERATOR_KEY (suiprivkey...)");
 
   const keypair = Ed25519Keypair.fromSecretKey(key);
-  const client = new SuiJsonRpcClient({ url: resolveRpcUrl("testnet"), network: "testnet" });
+  const client = makeSuiClient("testnet");
   const wallet = new KeypairAdapter(keypair, client);
   const me = keypair.toSuiAddress();
 
@@ -31,7 +30,7 @@ async function main() {
     sealSecret: process.env.PRAXIS_SEAL_SECRET,
   });
 
-  const bal = (await client.getBalance({ owner: me })).totalBalance;
+  const bal = (await client.getBalance({ owner: me })).balance.balance;
   console.log(`operator ${me}  balance ${Number(bal) / 1e9} SUI\n`);
 
   // 1. simulate
@@ -75,8 +74,8 @@ async function main() {
   console.log(`    revealed decision: "${revealed.intent.reasoning.decision}" (blake3 ${revealed.blake3.slice(0, 12)}..)`);
 
   // counters
-  const idx = await client.getObject({ id: praxis.deployment.agentIndexId, options: { showContent: true } });
-  const fields = (idx.data?.content as { fields?: Record<string, string> })?.fields;
+  const idx = await client.getObject({ objectId: praxis.deployment.agentIndexId, include: { json: true } });
+  const fields = idx.object.json as Record<string, string> | null;
   console.log(`\nAgentIndex: total_count=${fields?.total_count} total_aborts=${fields?.total_aborts}`);
   console.log("\nSMOKE OK");
 }
