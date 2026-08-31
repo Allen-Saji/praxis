@@ -8,6 +8,7 @@ export const U64_MAX = 18_446_744_073_709_551_615n;
 export class DomainError extends Error {
   constructor(readonly code: string, message: string) { super(message); }
 }
+export * from "./auth";
 
 export function parseMist(value: string): bigint {
   if (!/^(0|[1-9][0-9]*)$/.test(value)) throw new DomainError("INVALID_AMOUNT", "amount must be a canonical unsigned decimal");
