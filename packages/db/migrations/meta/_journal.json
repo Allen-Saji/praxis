@@ -15,6 +15,13 @@
       "when": 1788157374760,
       "tag": "0001_aberrant_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788171600134,
+      "tag": "0002_orange_sleeper",
+      "breakpoints": true
     }
   ]
 }
