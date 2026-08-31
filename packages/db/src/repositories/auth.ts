@@ -28,4 +28,8 @@ export class AuthRepository {
     const [session] = await this.db.update(schema.sessions).set({ revokedAt: now }).where(and(eq(schema.sessions.tokenHash, tokenHash), isNull(schema.sessions.revokedAt))).returning();
     return session ?? null;
   }
+  async activeSession(tokenHash: string, now: Date) {
+    const [row] = await this.db.select({ session: schema.sessions, user: schema.users }).from(schema.sessions).innerJoin(schema.users, eq(schema.sessions.userId, schema.users.id)).where(and(eq(schema.sessions.tokenHash, tokenHash), isNull(schema.sessions.revokedAt), gt(schema.sessions.expiresAt, now))).limit(1);
+    return row ?? null;
+  }
 }
