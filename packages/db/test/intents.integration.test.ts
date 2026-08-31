@@ -20,14 +20,14 @@ beforeAll(async () => {
 
 describe("IntentRepository", () => {
   test("creates one intent for a replay and rejects changed content", async () => {
-    const input = { ...context, idempotencyKey: "replay-key", requestHash: "a".repeat(64), purposeTag: "b".repeat(64), recipient: "0x2", amountMist: 1n, reasoningJson: { prompt: "p", decision: "d", model: "m" } };
+    const run = crypto.randomUUID().replaceAll("-", ""); const input = { ...context, idempotencyKey: "replay-key", requestHash: `a${run}`.padEnd(64, "a"), purposeTag: `b${run}`.padEnd(64, "b"), recipient: "0x2", amountMist: 1n, reasoningJson: { prompt: "p", decision: "d", model: "m" } };
     expect((await repository.createOrLoad(input)).kind).toBe("created");
     expect((await repository.createOrLoad(input)).kind).toBe("existing");
-    expect((await repository.createOrLoad({ ...input, requestHash: "c".repeat(64), purposeTag: "d".repeat(64) })).kind).toBe("conflict");
+    expect((await repository.createOrLoad({ ...input, requestHash: `c${run}`.padEnd(64, "c"), purposeTag: `d${run}`.padEnd(64, "d") })).kind).toBe("conflict");
   });
 
   test("uses state version as a compare-and-swap guard", async () => {
-    const created = await repository.createOrLoad({ ...context, idempotencyKey: "cas-key", requestHash: "e".repeat(64), purposeTag: "f".repeat(64), recipient: "0x3", amountMist: 2n, reasoningJson: { prompt: "p", decision: "d", model: "m" } });
+    const run = crypto.randomUUID().replaceAll("-", ""); const created = await repository.createOrLoad({ ...context, idempotencyKey: "cas-key", requestHash: `e${run}`.padEnd(64, "e"), purposeTag: `f${run}`.padEnd(64, "f"), recipient: "0x3", amountMist: 2n, reasoningJson: { prompt: "p", decision: "d", model: "m" } });
     if (created.kind !== "created") throw new Error("fixture must create an intent");
     expect((await repository.transition(created.intent.id, "received", 0, "reserved"))?.state).toBe("reserved");
     expect(await repository.transition(created.intent.id, "received", 0, "reserved")).toBeNull();
