@@ -17,6 +17,7 @@
     "demo:cli": "tsx scripts/demo-cli.ts"
   },
   "devDependencies": {
+    "supabase": "^2.116.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
