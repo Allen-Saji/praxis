@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter @allen-saji/praxis build && pnpm --filter @allen-saji/praxis-web build",
+  "buildCommand": "cd ../.. && pnpm --filter @allen-saji/praxis-control-plane build && pnpm --filter @allen-saji/praxis-db build && pnpm --filter @allen-saji/praxis build && pnpm --filter @allen-saji/praxis-web build",
   "outputDirectory": ".next"
 }
