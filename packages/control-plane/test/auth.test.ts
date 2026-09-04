@@ -3,4 +3,9 @@ import { challengeMessage, createAgentCredential, createSessionToken, digestMatc
 describe("auth primitives", () => {
   it("creates parseable scoped credentials and verifies HMAC digests", () => { const credential = createAgentCredential(); expect(parseAgentCredential(credential.token).prefix).toBe(credential.prefix); const digest = tokenDigest(credential.token, "pepper"); expect(digestMatches(digest, tokenDigest(credential.token, "pepper"))).toBe(true); expect(digestMatches(digest, tokenDigest(credential.token, "other"))).toBe(false); });
   it("uses opaque session tokens and exact login messages", () => { expect(createSessionToken()).toHaveLength(43); expect(challengeMessage({ domain: "praxis.test", uri: "https://praxis.test", address: "0x1", nonce: "n", issuedAt: new Date("2026-01-01T00:00:00Z"), expiresAt: new Date("2026-01-01T00:05:00Z") })).toContain("This does not authorize a transaction."); });
+  it("fails closed for malformed credentials, missing pepper, and malformed digests", () => {
+    expect(() => parseAgentCredential("not-a-credential")).toThrow("credential is malformed");
+    expect(() => tokenDigest("token", "")).toThrow("credential pepper is required");
+    expect(digestMatches("bad", "00")).toBe(false);
+  });
 });

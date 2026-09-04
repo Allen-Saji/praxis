@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { DomainError } from "./index";
+import { DomainError } from "./errors";
 
 const TOKEN_RE = /^px_agent_([A-Za-z0-9_-]{12})_([A-Za-z0-9_-]{43})$/;
 
