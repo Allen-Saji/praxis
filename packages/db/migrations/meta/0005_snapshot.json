@@ -1,0 +1,2554 @@
+{
+  "id": "b9e8b648-6f07-4a2f-9b32-4cc7af2f3d11",
+  "prevId": "a561b435-3a2a-4039-9eef-1969277558cb",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.agent_credentials": {
+      "name": "agent_credentials",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_prefix": {
+          "name": "token_prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agent_credentials_organization_id_organizations_id_fk": {
+          "name": "agent_credentials_organization_id_organizations_id_fk",
+          "tableFrom": "agent_credentials",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "agent_credentials_assignment_id_wallet_agent_assignments_id_fk": {
+          "name": "agent_credentials_assignment_id_wallet_agent_assignments_id_fk",
+          "tableFrom": "agent_credentials",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "agent_credentials_created_by_user_id_users_id_fk": {
+          "name": "agent_credentials_created_by_user_id_users_id_fk",
+          "tableFrom": "agent_credentials",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "credential_assignment_tenant_fk": {
+          "name": "credential_assignment_tenant_fk",
+          "tableFrom": "agent_credentials",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "organization_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agent_credentials_token_hash_unique": {
+          "name": "agent_credentials_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        },
+        "credential_prefix_unique": {
+          "name": "credential_prefix_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_prefix"
+          ]
+        },
+        "credential_organization_identity_unique": {
+          "name": "credential_organization_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id",
+            "assignment_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "credential_name_check": {
+          "name": "credential_name_check",
+          "value": "length(btrim(\"agent_credentials\".\"name\")) between 1 and 64"
+        },
+        "credential_token_hash_check": {
+          "name": "credential_token_hash_check",
+          "value": "octet_length(\"agent_credentials\".\"token_hash\") = 32"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agents": {
+      "name": "agents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_ref": {
+          "name": "external_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agents_organization_id_organizations_id_fk": {
+          "name": "agents_organization_id_organizations_id_fk",
+          "tableFrom": "agents",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agent_external_ref_unique": {
+          "name": "agent_external_ref_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "external_ref"
+          ]
+        },
+        "agent_organization_id_unique": {
+          "name": "agent_organization_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agent_name_check": {
+          "name": "agent_name_check",
+          "value": "length(btrim(\"agents\".\"name\")) between 1 and 64"
+        },
+        "agent_status_check": {
+          "name": "agent_status_check",
+          "value": "\"agents\".\"status\" in ('active', 'disabled', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.assignment_budget_counters": {
+      "name": "assignment_budget_counters",
+      "schema": "",
+      "columns": {
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_kind": {
+          "name": "period_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_start": {
+          "name": "period_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spent_mist": {
+          "name": "spent_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "reserved_mist": {
+          "name": "reserved_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "assignment_budget_counters_assignment_id_wallet_agent_assignments_id_fk": {
+          "name": "assignment_budget_counters_assignment_id_wallet_agent_assignments_id_fk",
+          "tableFrom": "assignment_budget_counters",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "assignment_budget_counters_assignment_id_period_kind_period_start_pk": {
+          "name": "assignment_budget_counters_assignment_id_period_kind_period_start_pk",
+          "columns": [
+            "assignment_id",
+            "period_kind",
+            "period_start"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "assignment_counter_nonnegative": {
+          "name": "assignment_counter_nonnegative",
+          "value": "\"assignment_budget_counters\".\"spent_mist\" >= 0 and \"assignment_budget_counters\".\"reserved_mist\" >= 0 and \"assignment_budget_counters\".\"period_kind\" in ('day', 'month')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.wallet_agent_assignments": {
+      "name": "wallet_agent_assignments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "wallet_agent_assignments_organization_id_organizations_id_fk": {
+          "name": "wallet_agent_assignments_organization_id_organizations_id_fk",
+          "tableFrom": "wallet_agent_assignments",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wallet_agent_assignments_wallet_id_wallets_id_fk": {
+          "name": "wallet_agent_assignments_wallet_id_wallets_id_fk",
+          "tableFrom": "wallet_agent_assignments",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wallet_agent_assignments_agent_id_agents_id_fk": {
+          "name": "wallet_agent_assignments_agent_id_agents_id_fk",
+          "tableFrom": "wallet_agent_assignments",
+          "tableTo": "agents",
+          "columnsFrom": [
+            "agent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "assignment_wallet_tenant_fk": {
+          "name": "assignment_wallet_tenant_fk",
+          "tableFrom": "wallet_agent_assignments",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "organization_id",
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "assignment_agent_tenant_fk": {
+          "name": "assignment_agent_tenant_fk",
+          "tableFrom": "wallet_agent_assignments",
+          "tableTo": "agents",
+          "columnsFrom": [
+            "organization_id",
+            "agent_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "wallet_agent_unique": {
+          "name": "wallet_agent_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "wallet_id",
+            "agent_id"
+          ]
+        },
+        "assignment_organization_identity_unique": {
+          "name": "assignment_organization_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id",
+            "wallet_id",
+            "agent_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "assignment_status_check": {
+          "name": "assignment_status_check",
+          "value": "\"wallet_agent_assignments\".\"status\" in ('active', 'disabled', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.audit_events": {
+      "name": "audit_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_type": {
+          "name": "actor_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_type": {
+          "name": "subject_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_json": {
+          "name": "metadata_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "audit_org_created_index": {
+          "name": "audit_org_created_index",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "audit_events_organization_id_organizations_id_fk": {
+          "name": "audit_events_organization_id_organizations_id_fk",
+          "tableFrom": "audit_events",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.auth_challenges": {
+      "name": "auth_challenges",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nonce_hash": {
+          "name": "nonce_hash",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "network": {
+          "name": "network",
+          "type": "network",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'testnet'"
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_challenges_nonce_hash_unique": {
+          "name": "auth_challenges_nonce_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nonce_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "auth_challenge_address_check": {
+          "name": "auth_challenge_address_check",
+          "value": "\"auth_challenges\".\"address\" ~ '^0x[0-9a-f]{1,64}$'"
+        },
+        "auth_challenge_nonce_hash_check": {
+          "name": "auth_challenge_nonce_hash_check",
+          "value": "octet_length(\"auth_challenges\".\"nonce_hash\") = 32"
+        },
+        "challenge_lifetime_check": {
+          "name": "challenge_lifetime_check",
+          "value": "\"auth_challenges\".\"expires_at\" > \"auth_challenges\".\"issued_at\" and \"auth_challenges\".\"expires_at\" <= \"auth_challenges\".\"issued_at\" + interval '5 minutes'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.budget_reservations": {
+      "name": "budget_reservations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intent_id": {
+          "name": "intent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_mist": {
+          "name": "amount_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "reservation_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "budget_reservations_organization_id_organizations_id_fk": {
+          "name": "budget_reservations_organization_id_organizations_id_fk",
+          "tableFrom": "budget_reservations",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "budget_reservations_intent_id_spend_intents_id_fk": {
+          "name": "budget_reservations_intent_id_spend_intents_id_fk",
+          "tableFrom": "budget_reservations",
+          "tableTo": "spend_intents",
+          "columnsFrom": [
+            "intent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "budget_reservations_wallet_id_wallets_id_fk": {
+          "name": "budget_reservations_wallet_id_wallets_id_fk",
+          "tableFrom": "budget_reservations",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "budget_reservations_assignment_id_wallet_agent_assignments_id_fk": {
+          "name": "budget_reservations_assignment_id_wallet_agent_assignments_id_fk",
+          "tableFrom": "budget_reservations",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "reservation_intent_identity_fk": {
+          "name": "reservation_intent_identity_fk",
+          "tableFrom": "budget_reservations",
+          "tableTo": "spend_intents",
+          "columnsFrom": [
+            "organization_id",
+            "intent_id",
+            "wallet_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id",
+            "wallet_id",
+            "assignment_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "budget_reservations_intent_id_unique": {
+          "name": "budget_reservations_intent_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "intent_id"
+          ]
+        },
+        "reservation_organization_identity_unique": {
+          "name": "reservation_organization_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "reservation_amount_check": {
+          "name": "reservation_amount_check",
+          "value": "\"budget_reservations\".\"amount_mist\" > 0 and \"budget_reservations\".\"amount_mist\" <= 18446744073709551615"
+        },
+        "reservation_expiry_check": {
+          "name": "reservation_expiry_check",
+          "value": "\"budget_reservations\".\"expires_at\" >= \"budget_reservations\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.organization_members": {
+      "name": "organization_members",
+      "schema": "",
+      "columns": {
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "organization_members_organization_id_organizations_id_fk": {
+          "name": "organization_members_organization_id_organizations_id_fk",
+          "tableFrom": "organization_members",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "organization_members_user_id_users_id_fk": {
+          "name": "organization_members_user_id_users_id_fk",
+          "tableFrom": "organization_members",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "organization_members_organization_id_user_id_pk": {
+          "name": "organization_members_organization_id_user_id_pk",
+          "columns": [
+            "organization_id",
+            "user_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "organization_member_role_check": {
+          "name": "organization_member_role_check",
+          "value": "\"organization_members\".\"role\" in ('owner', 'admin', 'viewer')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.organizations": {
+      "name": "organizations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "network": {
+          "name": "network",
+          "type": "network",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'testnet'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organizations_slug_unique": {
+          "name": "organizations_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "organizations_slug_check": {
+          "name": "organizations_slug_check",
+          "value": "\"organizations\".\"slug\" ~ '^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$'"
+        },
+        "organizations_name_check": {
+          "name": "organizations_name_check",
+          "value": "length(btrim(\"organizations\".\"name\")) between 1 and 80"
+        },
+        "organizations_status_check": {
+          "name": "organizations_status_check",
+          "value": "\"organizations\".\"status\" in ('active', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.policy_recipient_rules": {
+      "name": "policy_recipient_rules",
+      "schema": "",
+      "columns": {
+        "policy_version_id": {
+          "name": "policy_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipient": {
+          "name": "recipient",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effect": {
+          "name": "effect",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "policy_recipient_rules_policy_version_id_policy_versions_id_fk": {
+          "name": "policy_recipient_rules_policy_version_id_policy_versions_id_fk",
+          "tableFrom": "policy_recipient_rules",
+          "tableTo": "policy_versions",
+          "columnsFrom": [
+            "policy_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "policy_recipient_rules_policy_version_id_recipient_pk": {
+          "name": "policy_recipient_rules_policy_version_id_recipient_pk",
+          "columns": [
+            "policy_version_id",
+            "recipient"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "policy_recipient_address_check": {
+          "name": "policy_recipient_address_check",
+          "value": "\"policy_recipient_rules\".\"recipient\" ~ '^0x[0-9a-f]{1,64}$'"
+        },
+        "policy_recipient_effect_check": {
+          "name": "policy_recipient_effect_check",
+          "value": "\"policy_recipient_rules\".\"effect\" in ('allow', 'deny')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.policy_scopes": {
+      "name": "policy_scopes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope_type": {
+          "name": "scope_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_version_id": {
+          "name": "current_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "policy_scopes_organization_id_organizations_id_fk": {
+          "name": "policy_scopes_organization_id_organizations_id_fk",
+          "tableFrom": "policy_scopes",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "policy_scopes_wallet_id_wallets_id_fk": {
+          "name": "policy_scopes_wallet_id_wallets_id_fk",
+          "tableFrom": "policy_scopes",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "policy_scopes_assignment_id_wallet_agent_assignments_id_fk": {
+          "name": "policy_scopes_assignment_id_wallet_agent_assignments_id_fk",
+          "tableFrom": "policy_scopes",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "policy_scope_wallet_tenant_fk": {
+          "name": "policy_scope_wallet_tenant_fk",
+          "tableFrom": "policy_scopes",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "organization_id",
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "policy_scope_assignment_tenant_fk": {
+          "name": "policy_scope_assignment_tenant_fk",
+          "tableFrom": "policy_scopes",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "organization_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "policy_scope_identity_unique": {
+          "name": "policy_scope_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        },
+        "wallet_policy_scope_unique": {
+          "name": "wallet_policy_scope_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "scope_type",
+            "wallet_id"
+          ]
+        },
+        "assignment_policy_scope_unique": {
+          "name": "assignment_policy_scope_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "scope_type",
+            "assignment_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "policy_scope_type_check": {
+          "name": "policy_scope_type_check",
+          "value": "\"policy_scopes\".\"scope_type\" in ('wallet', 'assignment')"
+        },
+        "policy_scope_subject_check": {
+          "name": "policy_scope_subject_check",
+          "value": "(\"policy_scopes\".\"scope_type\" = 'wallet' and \"policy_scopes\".\"wallet_id\" is not null and \"policy_scopes\".\"assignment_id\" is null) or (\"policy_scopes\".\"scope_type\" = 'assignment' and \"policy_scopes\".\"assignment_id\" is not null and \"policy_scopes\".\"wallet_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.policy_versions": {
+      "name": "policy_versions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "scope_id": {
+          "name": "scope_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "policy_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "max_per_tx_mist": {
+          "name": "max_per_tx_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_per_day_mist": {
+          "name": "max_per_day_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_per_month_mist": {
+          "name": "max_per_month_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block_risk_score_at": {
+          "name": "block_risk_score_at",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "require_simulation": {
+          "name": "require_simulation",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "canonical_json": {
+          "name": "canonical_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "policy_hash": {
+          "name": "policy_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "activated_at": {
+          "name": "activated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "superseded_at": {
+          "name": "superseded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "policy_versions_scope_id_policy_scopes_id_fk": {
+          "name": "policy_versions_scope_id_policy_scopes_id_fk",
+          "tableFrom": "policy_versions",
+          "tableTo": "policy_scopes",
+          "columnsFrom": [
+            "scope_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "policy_versions_created_by_user_id_users_id_fk": {
+          "name": "policy_versions_created_by_user_id_users_id_fk",
+          "tableFrom": "policy_versions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "policy_scope_version_unique": {
+          "name": "policy_scope_version_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "scope_id",
+            "version"
+          ]
+        },
+        "policy_scope_hash_unique": {
+          "name": "policy_scope_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "scope_id",
+            "policy_hash"
+          ]
+        },
+        "policy_scope_identity_unique": {
+          "name": "policy_scope_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "scope_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "policy_version_number_check": {
+          "name": "policy_version_number_check",
+          "value": "\"policy_versions\".\"version\" > 0"
+        },
+        "policy_limits_check": {
+          "name": "policy_limits_check",
+          "value": "\"policy_versions\".\"max_per_tx_mist\" > 0 and \"policy_versions\".\"max_per_day_mist\" >= \"policy_versions\".\"max_per_tx_mist\" and \"policy_versions\".\"max_per_month_mist\" >= \"policy_versions\".\"max_per_day_mist\" and \"policy_versions\".\"max_per_month_mist\" <= 99999999999999999999"
+        },
+        "policy_risk_check": {
+          "name": "policy_risk_check",
+          "value": "\"policy_versions\".\"block_risk_score_at\" between 1 and 100"
+        },
+        "policy_simulation_required_check": {
+          "name": "policy_simulation_required_check",
+          "value": "\"policy_versions\".\"require_simulation\" = true"
+        },
+        "policy_hash_check": {
+          "name": "policy_hash_check",
+          "value": "\"policy_versions\".\"policy_hash\" ~ '^[0-9a-f]{64}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sessions_token_hash_unique": {
+          "name": "sessions_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "session_token_hash_check": {
+          "name": "session_token_hash_check",
+          "value": "octet_length(\"sessions\".\"token_hash\") = 32"
+        },
+        "session_expiry_check": {
+          "name": "session_expiry_check",
+          "value": "\"sessions\".\"expires_at\" > \"sessions\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.spend_intents": {
+      "name": "spend_intents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assignment_id": {
+          "name": "assignment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "credential_id": {
+          "name": "credential_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose_tag": {
+          "name": "purpose_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipient": {
+          "name": "recipient",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_mist": {
+          "name": "amount_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "coin_type": {
+          "name": "coin_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reasoning_json": {
+          "name": "reasoning_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "privacy": {
+          "name": "privacy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'private'"
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "wallet_policy_version_id": {
+          "name": "wallet_policy_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wallet_policy_hash": {
+          "name": "wallet_policy_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignment_policy_version_id": {
+          "name": "assignment_policy_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignment_policy_hash": {
+          "name": "assignment_policy_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "effective_policy_hash": {
+          "name": "effective_policy_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "intent_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'received'"
+        },
+        "state_version": {
+          "name": "state_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "attempt_count": {
+          "name": "attempt_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "processing_lease_id": {
+          "name": "processing_lease_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing_lease_expires_at": {
+          "name": "processing_lease_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "simulation_json": {
+          "name": "simulation_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "simulation_hash": {
+          "name": "simulation_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "risk_score": {
+          "name": "risk_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recommendation": {
+          "name": "recommendation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "simulated_at": {
+          "name": "simulated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_state": {
+          "name": "evidence_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "evidence_blob_id": {
+          "name": "evidence_blob_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_hash": {
+          "name": "evidence_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_attempts": {
+          "name": "evidence_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "evidence_last_error": {
+          "name": "evidence_last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tx_digest": {
+          "name": "tx_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receipt_id": {
+          "name": "receipt_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "chain_error_code": {
+          "name": "chain_error_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "abort_reason": {
+          "name": "abort_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "failure_code": {
+          "name": "failure_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "failure_detail": {
+          "name": "failure_detail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "policy_snapshot_json": {
+          "name": "policy_snapshot_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "spend_intents_organization_id_organizations_id_fk": {
+          "name": "spend_intents_organization_id_organizations_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "spend_intents_assignment_id_wallet_agent_assignments_id_fk": {
+          "name": "spend_intents_assignment_id_wallet_agent_assignments_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "spend_intents_wallet_id_wallets_id_fk": {
+          "name": "spend_intents_wallet_id_wallets_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "spend_intents_agent_id_agents_id_fk": {
+          "name": "spend_intents_agent_id_agents_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "agents",
+          "columnsFrom": [
+            "agent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "spend_intents_credential_id_agent_credentials_id_fk": {
+          "name": "spend_intents_credential_id_agent_credentials_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "agent_credentials",
+          "columnsFrom": [
+            "credential_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "spend_intents_wallet_policy_version_id_policy_versions_id_fk": {
+          "name": "spend_intents_wallet_policy_version_id_policy_versions_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "policy_versions",
+          "columnsFrom": [
+            "wallet_policy_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "spend_intents_assignment_policy_version_id_policy_versions_id_fk": {
+          "name": "spend_intents_assignment_policy_version_id_policy_versions_id_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "policy_versions",
+          "columnsFrom": [
+            "assignment_policy_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "intent_assignment_identity_fk": {
+          "name": "intent_assignment_identity_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "wallet_agent_assignments",
+          "columnsFrom": [
+            "organization_id",
+            "assignment_id",
+            "wallet_id",
+            "agent_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id",
+            "wallet_id",
+            "agent_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "intent_credential_identity_fk": {
+          "name": "intent_credential_identity_fk",
+          "tableFrom": "spend_intents",
+          "tableTo": "agent_credentials",
+          "columnsFrom": [
+            "organization_id",
+            "credential_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id",
+            "assignment_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "spend_intents_purpose_tag_unique": {
+          "name": "spend_intents_purpose_tag_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "purpose_tag"
+          ]
+        },
+        "intent_assignment_idempotency_unique": {
+          "name": "intent_assignment_idempotency_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "assignment_id",
+            "idempotency_key"
+          ]
+        },
+        "spend_intent_organization_identity_unique": {
+          "name": "spend_intent_organization_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "intent_idempotency_key_check": {
+          "name": "intent_idempotency_key_check",
+          "value": "length(\"spend_intents\".\"idempotency_key\") between 8 and 128 and \"spend_intents\".\"idempotency_key\" !~ '[^ -~]'"
+        },
+        "intent_request_hash_check": {
+          "name": "intent_request_hash_check",
+          "value": "\"spend_intents\".\"request_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "intent_purpose_tag_check": {
+          "name": "intent_purpose_tag_check",
+          "value": "\"spend_intents\".\"purpose_tag\" ~ '^[0-9a-f]{64}$'"
+        },
+        "intent_amount_check": {
+          "name": "intent_amount_check",
+          "value": "\"spend_intents\".\"amount_mist\" > 0 and \"spend_intents\".\"amount_mist\" <= 18446744073709551615"
+        },
+        "intent_coin_check": {
+          "name": "intent_coin_check",
+          "value": "\"spend_intents\".\"coin_type\" = '0x2::sui::SUI'"
+        },
+        "intent_recipient_check": {
+          "name": "intent_recipient_check",
+          "value": "\"spend_intents\".\"recipient\" ~ '^0x[0-9a-f]{1,64}$'"
+        },
+        "intent_privacy_check": {
+          "name": "intent_privacy_check",
+          "value": "\"spend_intents\".\"privacy\" in ('private', 'sealed')"
+        },
+        "intent_state_version_check": {
+          "name": "intent_state_version_check",
+          "value": "\"spend_intents\".\"state_version\" >= 0 and \"spend_intents\".\"attempt_count\" >= 0 and \"spend_intents\".\"evidence_attempts\" >= 0"
+        },
+        "intent_hash_pair_check": {
+          "name": "intent_hash_pair_check",
+          "value": "(\"spend_intents\".\"wallet_policy_version_id\" is null and \"spend_intents\".\"wallet_policy_hash\" is null and \"spend_intents\".\"assignment_policy_version_id\" is null and \"spend_intents\".\"assignment_policy_hash\" is null and \"spend_intents\".\"effective_policy_hash\" is null) or (\"spend_intents\".\"wallet_policy_version_id\" is not null and \"spend_intents\".\"wallet_policy_hash\" is not null and \"spend_intents\".\"assignment_policy_version_id\" is not null and \"spend_intents\".\"assignment_policy_hash\" is not null and \"spend_intents\".\"effective_policy_hash\" is not null)"
+        },
+        "intent_processing_lease_pair_check": {
+          "name": "intent_processing_lease_pair_check",
+          "value": "(\"spend_intents\".\"processing_lease_id\" is null and \"spend_intents\".\"processing_lease_expires_at\" is null) or (\"spend_intents\".\"processing_lease_id\" is not null and \"spend_intents\".\"processing_lease_expires_at\" is not null)"
+        },
+        "intent_evidence_state_check": {
+          "name": "intent_evidence_state_check",
+          "value": "\"spend_intents\".\"evidence_state\" in ('pending', 'published', 'failed')"
+        },
+        "intent_outcome_check": {
+          "name": "intent_outcome_check",
+          "value": "\"spend_intents\".\"outcome\" is null or \"spend_intents\".\"outcome\" in ('confirmed', 'blocked', 'failed')"
+        },
+        "intent_state_outcome_check": {
+          "name": "intent_state_outcome_check",
+          "value": "(\"spend_intents\".\"state\" in ('received', 'policy_blocked', 'reserved', 'simulating', 'simulation_blocked', 'evidence_pending', 'evidence_published', 'signing', 'submitted', 'submission_unknown', 'evidence_pending', 'abort_record_pending') and \"spend_intents\".\"outcome\" is null) or (\"spend_intents\".\"state\" in ('blocked', 'confirmed', 'failed', 'expired') and \"spend_intents\".\"outcome\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "primary_sui_address": {
+          "name": "primary_sui_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_login_at": {
+          "name": "last_login_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_primary_sui_address_unique": {
+          "name": "users_primary_sui_address_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "primary_sui_address"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "users_sui_address_check": {
+          "name": "users_sui_address_check",
+          "value": "\"users\".\"primary_sui_address\" ~ '^0x[0-9a-f]{1,64}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.wallet_budget_counters": {
+      "name": "wallet_budget_counters",
+      "schema": "",
+      "columns": {
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_kind": {
+          "name": "period_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_start": {
+          "name": "period_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spent_mist": {
+          "name": "spent_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "reserved_mist": {
+          "name": "reserved_mist",
+          "type": "numeric(20, 0)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "wallet_budget_counters_wallet_id_wallets_id_fk": {
+          "name": "wallet_budget_counters_wallet_id_wallets_id_fk",
+          "tableFrom": "wallet_budget_counters",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "wallet_budget_counters_wallet_id_period_kind_period_start_pk": {
+          "name": "wallet_budget_counters_wallet_id_period_kind_period_start_pk",
+          "columns": [
+            "wallet_id",
+            "period_kind",
+            "period_start"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "wallet_counter_nonnegative": {
+          "name": "wallet_counter_nonnegative",
+          "value": "\"wallet_budget_counters\".\"spent_mist\" >= 0 and \"wallet_budget_counters\".\"reserved_mist\" >= 0 and \"wallet_budget_counters\".\"period_kind\" in ('day', 'month')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.wallet_execution_leases": {
+      "name": "wallet_execution_leases",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intent_id": {
+          "name": "intent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "worker_id": {
+          "name": "worker_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "acquired_at": {
+          "name": "acquired_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "released_at": {
+          "name": "released_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "wallet_execution_leases_organization_id_organizations_id_fk": {
+          "name": "wallet_execution_leases_organization_id_organizations_id_fk",
+          "tableFrom": "wallet_execution_leases",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wallet_execution_leases_wallet_id_wallets_id_fk": {
+          "name": "wallet_execution_leases_wallet_id_wallets_id_fk",
+          "tableFrom": "wallet_execution_leases",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wallet_execution_leases_intent_id_spend_intents_id_fk": {
+          "name": "wallet_execution_leases_intent_id_spend_intents_id_fk",
+          "tableFrom": "wallet_execution_leases",
+          "tableTo": "spend_intents",
+          "columnsFrom": [
+            "intent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wallet_execution_lease_wallet_tenant_fk": {
+          "name": "wallet_execution_lease_wallet_tenant_fk",
+          "tableFrom": "wallet_execution_leases",
+          "tableTo": "wallets",
+          "columnsFrom": [
+            "organization_id",
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wallet_execution_lease_intent_tenant_fk": {
+          "name": "wallet_execution_lease_intent_tenant_fk",
+          "tableFrom": "wallet_execution_leases",
+          "tableTo": "spend_intents",
+          "columnsFrom": [
+            "organization_id",
+            "intent_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "wallet_lease_identity_unique": {
+          "name": "wallet_lease_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "wallet_lease_worker_check": {
+          "name": "wallet_lease_worker_check",
+          "value": "length(btrim(\"wallet_execution_leases\".\"worker_id\")) between 1 and 128"
+        },
+        "wallet_lease_expiry_check": {
+          "name": "wallet_lease_expiry_check",
+          "value": "\"wallet_execution_leases\".\"expires_at\" > \"wallet_execution_leases\".\"acquired_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.wallets": {
+      "name": "wallets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sui_address": {
+          "name": "sui_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "network": {
+          "name": "network",
+          "type": "network",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'testnet'"
+        },
+        "adapter_type": {
+          "name": "adapter_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'demo_keypair'"
+        },
+        "adapter_ref": {
+          "name": "adapter_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "execution_status": {
+          "name": "execution_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'disabled'"
+        },
+        "execution_lease_id": {
+          "name": "execution_lease_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "execution_lease_expires_at": {
+          "name": "execution_lease_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "one_enabled_wallet_per_org": {
+          "name": "one_enabled_wallet_per_org",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"wallets\".\"execution_status\" = 'enabled'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wallets_organization_id_organizations_id_fk": {
+          "name": "wallets_organization_id_organizations_id_fk",
+          "tableFrom": "wallets",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "wallet_network_address_unique": {
+          "name": "wallet_network_address_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "network",
+            "sui_address"
+          ]
+        },
+        "wallet_organization_id_unique": {
+          "name": "wallet_organization_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "wallet_address_check": {
+          "name": "wallet_address_check",
+          "value": "\"wallets\".\"sui_address\" ~ '^0x[0-9a-f]{1,64}$'"
+        },
+        "wallet_label_check": {
+          "name": "wallet_label_check",
+          "value": "length(btrim(\"wallets\".\"label\")) between 1 and 64"
+        },
+        "wallet_adapter_type_check": {
+          "name": "wallet_adapter_type_check",
+          "value": "\"wallets\".\"adapter_type\" = 'demo_keypair'"
+        },
+        "wallet_execution_status_check": {
+          "name": "wallet_execution_status_check",
+          "value": "\"wallets\".\"execution_status\" in ('disabled', 'enabled', 'suspended')"
+        },
+        "wallet_lease_pair_check": {
+          "name": "wallet_lease_pair_check",
+          "value": "(\"wallets\".\"execution_lease_id\" is null and \"wallets\".\"execution_lease_expires_at\" is null) or (\"wallets\".\"execution_lease_id\" is not null and \"wallets\".\"execution_lease_expires_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.intent_state": {
+      "name": "intent_state",
+      "schema": "public",
+      "values": [
+        "received",
+        "policy_blocked",
+        "reserved",
+        "simulating",
+        "simulation_blocked",
+        "evidence_pending",
+        "evidence_published",
+        "signing",
+        "submitted",
+        "submission_unknown",
+        "confirmed",
+        "abort_record_pending",
+        "blocked",
+        "failed",
+        "expired"
+      ]
+    },
+    "public.network": {
+      "name": "network",
+      "schema": "public",
+      "values": [
+        "testnet"
+      ]
+    },
+    "public.policy_status": {
+      "name": "policy_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "active",
+        "superseded"
+      ]
+    },
+    "public.reservation_state": {
+      "name": "reservation_state",
+      "schema": "public",
+      "values": [
+        "active",
+        "committed",
+        "released",
+        "expired"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -1,35 +1,117 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { createDb, IntentRepository, agents, assignments, organizations, users, wallets } from "../src";
+import { and, eq } from "drizzle-orm";
+import { afterAll, describe, expect, it } from "vitest";
+import { IntentRepository } from "../src/repositories/intents";
+import { PolicyRepository } from "../src/repositories/policies";
+import { auditEvents, spendIntents } from "../src/schema";
+import { address, cleanupFixture, createFixture, databaseUrl, hexHash, openDb, type Fixture } from "./support";
 
-const databaseUrl = process.env.DATABASE_URL;
 const test = databaseUrl ? it : it.skip;
-let repository: IntentRepository;
-let context: { organizationId: string; assignmentId: string; walletId: string; agentId: string };
+const connections: ReturnType<typeof openDb>[] = [];
 
-beforeAll(async () => {
-  if (!databaseUrl) return;
-  const { db } = createDb(databaseUrl);
-  const [organization] = await db.insert(organizations).values({ slug: `test-${crypto.randomUUID().slice(0, 8)}`, name: "Test organization" }).returning();
-  const [user] = await db.insert(users).values({ primarySuiAddress: `0x${crypto.randomUUID().replaceAll("-", "").padEnd(64, "0")}` }).returning();
-  const [wallet] = await db.insert(wallets).values({ organizationId: organization.id, label: "test wallet", suiAddress: `0x${crypto.randomUUID().replaceAll("-", "").padEnd(64, "1")}`, adapterRef: "env:TEST" }).returning();
-  const [agent] = await db.insert(agents).values({ organizationId: organization.id, name: "test agent", externalRef: crypto.randomUUID() }).returning();
-  const [assignment] = await db.insert(assignments).values({ organizationId: organization.id, walletId: wallet.id, agentId: agent.id }).returning();
-  repository = new IntentRepository(db);
-  context = { organizationId: organization.id, assignmentId: assignment.id, walletId: wallet.id, agentId: agent.id };
+afterAll(async () => {
+  await Promise.all(connections.map(({ client }) => client.end()));
 });
+
+function connection() {
+  const value = openDb();
+  connections.push(value);
+  return value;
+}
+
+function intentInput(context: Fixture, key: string, requestHash = `hash-${key}`, purposeTag = `purpose-${key}`) {
+  return {
+    ...context,
+    idempotencyKey: key,
+    requestHash: /^[0-9a-f]{64}$/.test(requestHash) ? requestHash : hexHash(requestHash),
+    purposeTag: /^[0-9a-f]{64}$/.test(purposeTag) ? purposeTag : hexHash(purposeTag),
+    recipient: address("3"),
+    amountMist: 2n,
+    reasoningJson: { prompt: "p", decision: "d", model: "m" },
+  };
+}
 
 describe("IntentRepository", () => {
   test("creates one intent for a replay and rejects changed content", async () => {
-    const run = crypto.randomUUID().replaceAll("-", ""); const input = { ...context, idempotencyKey: "replay-key", requestHash: `a${run}`.padEnd(64, "a"), purposeTag: `b${run}`.padEnd(64, "b"), recipient: "0x2", amountMist: 1n, reasoningJson: { prompt: "p", decision: "d", model: "m" } };
-    expect((await repository.createOrLoad(input)).kind).toBe("created");
+    const value = connection();
+    const context = await createFixture(value.db);
+    const repository = new IntentRepository(value.db);
+    const input = intentInput(context, `replay-${crypto.randomUUID()}`);
+    const first = await repository.createOrLoad(input);
+    expect(first.kind).toBe("created");
+    if (first.kind !== "created") throw new Error("fixture must create an intent");
+    const firstAudit = await value.db.select({ id: auditEvents.id }).from(auditEvents).where(and(eq(auditEvents.organizationId, context.organizationId), eq(auditEvents.subjectId, first.intent.id), eq(auditEvents.eventType, "intent_created")));
+    expect(firstAudit).toHaveLength(1);
     expect((await repository.createOrLoad(input)).kind).toBe("existing");
-    expect((await repository.createOrLoad({ ...input, requestHash: `c${run}`.padEnd(64, "c"), purposeTag: `d${run}`.padEnd(64, "d") })).kind).toBe("conflict");
+    const replayAudit = await value.db.select({ id: auditEvents.id }).from(auditEvents).where(and(eq(auditEvents.organizationId, context.organizationId), eq(auditEvents.subjectId, first.intent.id), eq(auditEvents.eventType, "intent_created")));
+    expect(replayAudit).toHaveLength(1);
+    expect((await repository.createOrLoad({ ...input, requestHash: hexHash(`${input.requestHash}-changed`), purposeTag: hexHash(`${input.purposeTag}-changed`) })).kind).toBe("conflict");
+    await cleanupFixture(value.db, context);
   });
 
   test("uses state version as a compare-and-swap guard", async () => {
-    const run = crypto.randomUUID().replaceAll("-", ""); const created = await repository.createOrLoad({ ...context, idempotencyKey: "cas-key", requestHash: `e${run}`.padEnd(64, "e"), purposeTag: `f${run}`.padEnd(64, "f"), recipient: "0x3", amountMist: 2n, reasoningJson: { prompt: "p", decision: "d", model: "m" } });
+    const value = connection();
+    const context = await createFixture(value.db);
+    const repository = new IntentRepository(value.db);
+    const created = await repository.createOrLoad(intentInput(context, `cas-${crypto.randomUUID()}`));
     if (created.kind !== "created") throw new Error("fixture must create an intent");
-    expect((await repository.transition(created.intent.id, "received", 0, "reserved"))?.state).toBe("reserved");
-    expect(await repository.transition(created.intent.id, "received", 0, "reserved")).toBeNull();
+    const transition = {
+      organizationId: context.organizationId,
+      outcome: "failed" as const,
+    };
+    expect((await repository.transition(created.intent.id, "received", 0, "failed", transition))?.state).toBe("failed");
+    expect(await repository.transition(created.intent.id, "received", 0, "failed", transition)).toBeNull();
+    await cleanupFixture(value.db, context);
+  });
+
+  test("does not accept caller-fabricated policy snapshots", async () => {
+    const value = connection();
+    const context = await createFixture(value.db);
+    const repository = new IntentRepository(value.db);
+    const created = await repository.createOrLoad(intentInput(context, `snapshot-${crypto.randomUUID()}`));
+    if (created.kind !== "created") throw new Error("fixture must create an intent");
+    const fabricated = {
+      organizationId: context.organizationId,
+      walletPolicyVersionId: crypto.randomUUID(),
+      walletPolicyHash: hexHash("wallet-fabricated"),
+      assignmentPolicyVersionId: crypto.randomUUID(),
+      assignmentPolicyHash: hexHash("assignment-fabricated"),
+      effectivePolicyHash: hexHash("effective-fabricated"),
+      policySnapshotJson: { wallet: "fabricated", assignment: "fabricated" },
+      outcome: "failed",
+      failureCode: "FABRICATED_SNAPSHOT_TEST",
+    } as never;
+    const transitioned = await repository.transition(created.intent.id, "received", 0, "failed", fabricated);
+    expect(transitioned?.state).toBe("failed");
+    const [stored] = await value.db.select().from(spendIntents).where(eq(spendIntents.id, created.intent.id));
+    expect(stored?.walletPolicyVersionId).toBeNull();
+    expect(stored?.policySnapshotJson).toBeNull();
+    await cleanupFixture(value.db, context);
+  });
+
+  test("concurrent identical requests create one row", async () => {
+    const fixtureConnection = connection();
+    const context = await createFixture(fixtureConnection.db);
+    const first = connection();
+    const second = connection();
+    const input = intentInput(context, `concurrent-${crypto.randomUUID()}`);
+    const [one, two] = await Promise.all([
+      new IntentRepository(first.db).createOrLoad(input),
+      new IntentRepository(second.db).createOrLoad(input),
+    ]);
+    expect([one.kind, two.kind].sort()).toEqual(["created", "existing"]);
+    const rows = await fixtureConnection.db.select({ id: spendIntents.id }).from(spendIntents).where(eq(spendIntents.idempotencyKey, input.idempotencyKey));
+    expect(rows).toHaveLength(1);
+    await cleanupFixture(fixtureConnection.db, context);
+  });
+
+  test("turns a purpose-tag collision into a typed conflict", async () => {
+    const value = connection();
+    const context = await createFixture(value.db);
+    const repository = new IntentRepository(value.db);
+    const input = intentInput(context, `purpose-a-${crypto.randomUUID()}`);
+    const first = await repository.createOrLoad(input);
+    expect(first.kind).toBe("created");
+    await expect(repository.createOrLoad({ ...input, idempotencyKey: `purpose-b-${crypto.randomUUID()}` })).rejects.toMatchObject({ code: "PURPOSE_TAG_CONFLICT" });
+    await cleanupFixture(value.db, context);
   });
 });
