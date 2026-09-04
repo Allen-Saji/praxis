@@ -1,6 +1,7 @@
 {
   "name": "praxis",
   "private": true,
+  "type": "module",
   "version": "0.1.0",
   "description": "Wallet-agnostic security, simulation, and audit layer for AI agent spending on Sui",
   "packageManager": "pnpm@10.30.3",
@@ -8,8 +9,21 @@
     "node": ">=20.10"
   },
   "scripts": {
-    "build": "pnpm -r --filter \"./packages/*\" build",
-    "test": "pnpm -r test",
+    "packages:build": "pnpm -r --filter \"./packages/*\" build",
+    "format:check": "node scripts/check-format.mjs",
+    "lint": "pnpm --filter @allen-saji/praxis-web lint",
+    "typecheck": "pnpm packages:build && pnpm -r --if-present typecheck && tsc --noEmit -p tsconfig.scripts.json",
+    "test:unit": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test",
+    "test:db": "pnpm packages:build && pnpm --filter @allen-saji/praxis-db test:db",
+    "test:integration": "pnpm packages:build && pnpm --filter @allen-saji/praxis-web test",
+    "test": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test && pnpm --filter @allen-saji/praxis-db test:db && pnpm --filter @allen-saji/praxis-web test",
+    "build": "pnpm -r --if-present build",
+    "db:generate": "pnpm --filter @allen-saji/praxis-db generate",
+    "db:migrate": "pnpm --filter @allen-saji/praxis-db migrate",
+    "db:check": "pnpm --filter @allen-saji/praxis-db check",
+    "seed:phase1": "tsx scripts/seed-phase1.ts",
+    "smoke:phase1": "tsx scripts/smoke-phase1.ts",
+    "reconcile:intents": "tsx scripts/reconcile-intents.ts",
     "move:build": "sui move build --path move/praxis_core",
     "move:test": "sui move test --path move/praxis_core",
     "deploy:move": "bash scripts/deploy-move.sh",
@@ -17,13 +31,21 @@
     "demo:cli": "tsx scripts/demo-cli.ts"
   },
   "devDependencies": {
+    "@allen-saji/praxis": "workspace:*",
+    "@allen-saji/praxis-control-plane": "workspace:*",
+    "@allen-saji/praxis-db": "workspace:*",
+    "@mysten/sui": "^2.18.0",
+    "@types/node": "^25.9.3",
+    "drizzle-orm": "^0.45.1",
     "supabase": "^2.116.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
   "pnpm": {
     "overrides": {
-      "postcss@<8.5.10": ">=8.5.10"
+      "nanoid@<3.3.18": ">=3.3.18",
+      "postcss@<8.5.18": ">=8.5.18",
+      "sharp@<0.35.0": ">=0.35.0"
     }
   }
 }

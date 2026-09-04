@@ -7,7 +7,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "require": "./dist/index.cjs" } },
-  "scripts": { "build": "tsup", "typecheck": "tsc --noEmit", "test": "vitest run", "generate": "drizzle-kit generate", "migrate": "tsx src/migrate.ts" },
-  "dependencies": { "drizzle-orm": "^0.45.1", "postgres": "^3.4.7" },
+  "scripts": { "build": "tsup", "typecheck": "tsc --noEmit", "test": "vitest run", "test:db": "node -e \"if (!process.env.DATABASE_URL) { console.error('DATABASE_URL is required for test:db'); process.exit(1) }\" && vitest run", "generate": "drizzle-kit generate", "migrate": "tsx src/migrate.ts", "check": "drizzle-kit check" },
+  "dependencies": { "@allen-saji/praxis-control-plane": "workspace:*", "@noble/hashes": "^2.2.0", "drizzle-orm": "^0.45.1", "postgres": "^3.4.7" },
   "devDependencies": { "@types/node": "^25.9.3", "drizzle-kit": "^0.31.9", "tsup": "^8.5.1", "tsx": "^4.22.4", "typescript": "^5.9.3", "vitest": "^4.1.9" }
 }
