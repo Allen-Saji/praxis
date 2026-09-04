@@ -1,7 +1,5 @@
 import type { SuiGraphQLClient } from "@mysten/sui/graphql";
 import { SuiGraphQLClient as GraphQLClient } from "@mysten/sui/graphql";
-import type { SuiGrpcClient } from "@mysten/sui/grpc";
-import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import {
   DEPLOYMENTS,
@@ -9,7 +7,10 @@ import {
   resolveGraphqlUrl,
   type Deployment,
 } from "./config";
-import { makeLegacyEventClient, makeSuiClient, resilientFetch } from "./rpc";
+import { makeLegacyDashboardEventBridge, makeSuiClient, resilientFetch } from "./rpc";
+import type { LegacyDashboardEventBridge } from "./legacy-dashboard";
+import type { SuiTransport } from "./ports";
+import { PraxisSdkError } from "./errors";
 import { LocalSealer, type SealedBlob, type Sealer } from "./seal";
 import { WalrusStore } from "./walrus";
 import type { Network, ReasoningBlob } from "./types";
@@ -79,9 +80,11 @@ export type ReasoningResult =
 
 export interface PraxisReaderOptions {
   network?: Network;
-  client?: SuiGrpcClient;
+  client?: SuiTransport;
   graphqlClient?: SuiGraphQLClient;
-  legacyEventClient?: SuiJsonRpcClient;
+  /** @deprecated use legacyEventBridge; retained for dashboard compatibility. */
+  legacyEventClient?: LegacyDashboardEventBridge;
+  legacyEventBridge?: LegacyDashboardEventBridge;
   /** Override the gRPC endpoint (else SUI_GRPC_URL env, else the network default). */
   grpcUrl?: string;
   /** Override the GraphQL endpoint (else SUI_GRAPHQL_URL env, else the network default). */
@@ -103,16 +106,19 @@ export interface PraxisReaderOptions {
  */
 export class PraxisReader {
   readonly network: Network;
-  readonly client: SuiGrpcClient;
+  /** Transport-neutral client surface; gRPC is the default implementation. */
+  readonly client: SuiTransport;
   readonly deployment: Deployment;
   private graphql: SuiGraphQLClient;
-  private legacyEvents: SuiJsonRpcClient;
+  private transport: SuiTransport;
+  private legacyEvents: LegacyDashboardEventBridge;
   private walrus: WalrusStore;
   private sealer: Sealer;
 
   constructor(opts: PraxisReaderOptions = {}) {
     this.network = opts.network ?? "testnet";
     this.client = opts.client ?? makeSuiClient(this.network, opts.grpcUrl);
+    this.transport = this.client;
     this.graphql =
       opts.graphqlClient ??
       new GraphQLClient({
@@ -120,8 +126,13 @@ export class PraxisReader {
         url: resolveGraphqlUrl(this.network, opts.graphqlUrl),
         fetch: resilientFetch(),
       });
+    if (this.network !== "testnet" && (opts.legacyEventBridge || opts.legacyEventClient)) {
+      throw new PraxisSdkError("CONFIGURATION_ERROR", "the legacy event bridge is Testnet dashboard-only");
+    }
     this.legacyEvents =
-      opts.legacyEventClient ?? makeLegacyEventClient(this.network, opts.legacyEventRpcUrl);
+      opts.legacyEventBridge ??
+      opts.legacyEventClient ??
+      (this.network === "testnet" ? makeLegacyDashboardEventBridge(this.network, opts.legacyEventRpcUrl) : disabledLegacyBridge());
     this.deployment = { ...DEPLOYMENTS[this.network], ...opts.deployment };
     const wep = WALRUS_ENDPOINTS[this.network];
     this.walrus =
@@ -136,11 +147,12 @@ export class PraxisReader {
 
   /** On-chain totals from the shared AgentIndex object. */
   async indexStats(): Promise<IndexStats> {
-    const obj = await this.client.getObject({
+    const obj = await this.transport.getObject({
       objectId: this.deployment.agentIndexId,
       include: { json: true },
     });
-    const fields = obj.object.json as Record<string, unknown> | null;
+    const decoded = decodeObject(obj, "agent index");
+    const fields = decoded.json;
     const totalCount = Number(fields?.total_count ?? 0);
     const totalAborts = Number(fields?.total_aborts ?? 0);
     const denom = totalCount + totalAborts;
@@ -215,9 +227,10 @@ export class PraxisReader {
   /** Fetch a receipt object for a deep link without relying on an event window. */
   async receipt(receiptId: string): Promise<ReceiptEvent | null> {
     try {
-      const obj = await this.client.getObject({ objectId: receiptId, include: { json: true } });
-      const fields = obj.object.json as Record<string, unknown> | null;
-      if (!fields || !obj.object.type.includes("spending_receipt::SpendingReceipt")) return null;
+      const obj = await this.transport.getObject({ objectId: receiptId, include: { json: true } });
+      const decoded = decodeObject(obj, "receipt");
+      const fields = decoded.json;
+      if (!fields || !decoded.type.includes("spending_receipt::SpendingReceipt")) return null;
       const sealPolicy = byteVector(fields.seal_policy_id);
       return {
         receipt_id: receiptId,
@@ -258,22 +271,26 @@ export class PraxisReader {
 
     while (values.length < wanted) {
       const pageSize = Math.min(50, wanted - values.length);
-      const result = (await this.graphql.query({
+      const result = decodeGraphqlResult(await this.graphql.query({
         query: EVENTS_QUERY,
         variables: { type, last: pageSize, before },
-      })) as { data?: EventQueryResult; errors?: Array<{ message: string }> };
+      }));
       if (result.errors?.length) {
-        throw new Error(`event query failed: ${result.errors.map((error) => error.message).join("; ")}`);
+        throw new PraxisSdkError("EVENT_READ_FAILED", "event history is unavailable", {
+          cause: result.errors,
+          retryable: true,
+        });
       }
       const events = result.data?.events;
       if (!events) break;
       for (const node of events.nodes) {
-        if (node.contents?.json && typeof node.contents.json === "object") {
-          values.push({
-            event: normalizeEvent(node.contents.json as Record<string, unknown>) as T,
-            timestamp: node.timestamp ?? "",
-          });
+        if (!node.contents || !isRecord(node.contents.json)) {
+          throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event node contents are malformed");
         }
+        values.push({
+          event: normalizeEvent(node.contents.json) as T,
+          timestamp: node.timestamp ?? "",
+        });
       }
       if (!events.pageInfo.hasPreviousPage || !events.pageInfo.startCursor) break;
       before = events.pageInfo.startCursor;
@@ -290,7 +307,15 @@ export class PraxisReader {
       limit: wanted,
       order: "descending",
     });
-    return legacy.data.map((event) => normalizeEvent(event.parsedJson as Record<string, unknown>) as T);
+    if (!legacy || !Array.isArray(legacy.data)) {
+      throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "legacy event response is malformed");
+    }
+    return legacy.data.map((event) => {
+      if (!isRecord(event) || !isRecord(event.parsedJson)) {
+        throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "legacy event contents are malformed");
+      }
+      return normalizeEvent(event.parsedJson) as T;
+    });
   }
 }
 
@@ -320,6 +345,69 @@ function isSealed(v: SealedBlob | ReasoningBlob): v is SealedBlob {
   return (v as SealedBlob).sealed === true;
 }
 
+function decodeObject(value: unknown, operation: string): { type: string; json: Record<string, unknown> | null } {
+  if (!isRecord(value) || !isRecord(value.object) || typeof value.object.type !== "string") {
+    throw new PraxisSdkError("TRANSACTION_RESPONSE_MALFORMED", `${operation} response is malformed`);
+  }
+  const json = value.object.json;
+  if (json !== null && json !== undefined && !isRecord(json)) {
+    throw new PraxisSdkError("TRANSACTION_RESPONSE_MALFORMED", `${operation} JSON is malformed`);
+  }
+  return { type: value.object.type, json: (json as Record<string, unknown> | null | undefined) ?? null };
+}
+
+function disabledLegacyBridge(): LegacyDashboardEventBridge {
+  return {
+    queryEvents: async () => {
+      throw new PraxisSdkError("CONFIGURATION_ERROR", "legacy event history is disabled outside Testnet");
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function decodeGraphqlResult(value: unknown): { data?: EventQueryResult; errors?: Array<{ message: string }> } {
+  if (!isRecord(value)) throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event response is malformed");
+  const rawErrors = value.errors;
+  if (rawErrors !== undefined && (!Array.isArray(rawErrors) || rawErrors.some((item) => !isRecord(item) || typeof item.message !== "string"))) {
+    throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event response errors are malformed");
+  }
+  const errors = rawErrors as Array<{ message: string }> | undefined;
+  const rawData = value.data;
+  if (rawData === undefined || rawData === null) return { errors };
+  if (!isRecord(rawData)) throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event response data is malformed");
+  const rawEvents = rawData.events;
+  if (rawEvents === null) return { errors, data: { events: null } };
+  if (!isRecord(rawEvents) || !isRecord(rawEvents.pageInfo) ||
+      typeof rawEvents.pageInfo.hasPreviousPage !== "boolean" ||
+      (rawEvents.pageInfo.startCursor !== null && typeof rawEvents.pageInfo.startCursor !== "string") ||
+      !Array.isArray(rawEvents.nodes)) {
+    throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event pagination data is malformed");
+  }
+  const nodes = rawEvents.nodes.map((node) => {
+    if (!isRecord(node) || !("timestamp" in node) ||
+        (node.timestamp !== null && typeof node.timestamp !== "string") ||
+        !isRecord(node.contents)) {
+      throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event node is malformed");
+    }
+    return { timestamp: node.timestamp as string | null, contents: { json: node.contents.json } };
+  });
+  return {
+    errors,
+    data: {
+      events: {
+        pageInfo: {
+          hasPreviousPage: rawEvents.pageInfo.hasPreviousPage,
+          startCursor: rawEvents.pageInfo.startCursor as string | null,
+        },
+        nodes,
+      },
+    },
+  };
+}
+
 function safeNorm(a: string): string {
   try {
     return normalizeSuiAddress(a);
@@ -338,8 +426,16 @@ function normalizeEvent(fields: Record<string, unknown>): Record<string, unknown
 }
 
 function byteVector(value: unknown): number[] {
-  if (Array.isArray(value)) return value.map((item) => Number(item));
+  if (Array.isArray(value)) {
+    if (value.some((item) => !Number.isInteger(item) || (item as number) < 0 || (item as number) > 255)) {
+      throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event byte vector is malformed");
+    }
+    return value as number[];
+  }
   if (typeof value !== "string") return [];
+  if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+    throw new PraxisSdkError("EVENT_RESPONSE_MALFORMED", "event byte vector is malformed");
+  }
   if (typeof Buffer !== "undefined") return Array.from(Buffer.from(value, "base64"));
   const decoded = atob(value);
   return Array.from(decoded, (char) => char.charCodeAt(0));

@@ -1,17 +1,17 @@
-import type { SuiGrpcClient } from "@mysten/sui/grpc";
-import { Transaction } from "@mysten/sui/transactions";
-import { normalizeSuiAddress } from "@mysten/sui/utils";
-import { hexToBytes } from "@noble/hashes/utils.js";
-import { blake3Hex, canonicalize } from "./canonical";
+import { normalizeSuiAddressStrict } from "./address";
+import { blake3Hex, canonicalize, stablePurposeTag } from "./canonical";
 import { DEPLOYMENTS, SUI_TYPE, WALRUS_ENDPOINTS, type Deployment } from "./config";
+import { PraxisSdkError } from "./errors";
+import { executeApprovedSuiSpend, recordBlockedSuiIntent } from "./execution";
+import { buildReasoningEvidence } from "./evidence";
 import { makeSuiClient } from "./rpc";
+import { buildSuiTransferTransaction, simulateSuiTransfer } from "./simulation";
+import type { SuiTransport } from "./ports";
 import { PraxisReader } from "./reader";
-import { assessRisk } from "./risk";
 import { LocalSealer, type SealedBlob, type Sealer } from "./seal";
 import { WalrusStore } from "./walrus";
 import type {
   AbortReason,
-  BalanceDelta,
   Network,
   ReasoningBlob,
   SimulateArgs,
@@ -22,22 +22,15 @@ import type {
   WalletAdapter,
 } from "./types";
 
-const ABORT_REASON_CODE: Record<AbortReason, number> = {
-  agent_decision: 0,
-  policy_block: 1,
-  high_risk: 2,
-  sim_failed: 3,
-};
-
 export interface PraxisOptions {
   network?: Network;
   wallet: WalletAdapter;
-  client?: SuiGrpcClient;
+  client?: SuiTransport;
   /** Override the gRPC endpoint (else SUI_GRPC_URL env, else the network default). */
   grpcUrl?: string;
   deployment?: Partial<Deployment>;
   policy?: SpendingPolicy;
-  walrus?: { publisher?: string; aggregator?: string; epochs?: number; localFallbackDir?: string };
+  walrus?: { publisher?: string; aggregator?: string; epochs?: number; localFallbackDir?: string; mode?: "direct" | "hosted"; timeoutMs?: number; maxBodyBytes?: number; fetch?: typeof fetch };
   sealer?: Sealer;
   sealSecret?: string;
 }
@@ -45,14 +38,16 @@ export interface PraxisOptions {
 /**
  * The security middleware between an AI agent and its wallet.
  * Flow: parse intent -> simulate -> risk-score -> report back -> gate ->
- * sign via the wallet adapter -> log reasoning to Walrus -> emit on-chain receipt.
+ * publish evidence -> sign via the wallet adapter -> emit an on-chain record.
  */
 export class Praxis {
   readonly network: Network;
-  readonly client: SuiGrpcClient;
+  /** Transport-neutral client surface; gRPC is the default implementation. */
+  readonly client: SuiTransport;
   readonly deployment: Deployment;
   /** Read-only data surface; the dashboard can use the same class directly. */
   readonly reader: PraxisReader;
+  private readonly transport: SuiTransport;
   private wallet: WalletAdapter;
   private policy?: SpendingPolicy;
   private walrus: WalrusStore;
@@ -63,6 +58,7 @@ export class Praxis {
   constructor(opts: PraxisOptions) {
     this.network = opts.network ?? "testnet";
     this.client = opts.client ?? makeSuiClient(this.network, opts.grpcUrl);
+    this.transport = this.client;
     this.deployment = { ...DEPLOYMENTS[this.network], ...opts.deployment };
     this.wallet = opts.wallet;
     this.policy = opts.policy;
@@ -72,6 +68,10 @@ export class Praxis {
       aggregator: opts.walrus?.aggregator ?? wep.aggregator,
       epochs: opts.walrus?.epochs,
       localFallbackDir: opts.walrus?.localFallbackDir ?? ".praxis/blobs",
+      mode: opts.walrus?.mode ?? "direct",
+      timeoutMs: opts.walrus?.timeoutMs,
+      maxBodyBytes: opts.walrus?.maxBodyBytes,
+      fetch: opts.walrus?.fetch,
     });
     this.sealer = opts.sealer ?? new LocalSealer(opts.sealSecret);
     this.reader = new PraxisReader({
@@ -93,24 +93,45 @@ export class Praxis {
     const coinType = args.coinType ?? SUI_TYPE;
     assertSui(coinType);
     assertSpendAmount(args.amount);
-    const sender = await this.wallet.address();
-    const agent = args.agent ? normalizeSuiAddress(args.agent) : sender;
+    const sender = normalizeRecipient(await this.wallet.address());
+    const agent = args.agent ? normalizeRecipient(args.agent) : sender;
     return this.runSimulation(sender, agent, normalizeRecipient(args.to), args.amount, coinType);
   }
 
-  /** Full flow: intent -> simulate -> report -> gate -> sign -> log -> receipt. */
+  /** Full flow: intent -> simulate -> report -> gate -> evidence -> sign -> receipt. */
   async spend(args: SpendArgs): Promise<SpendResult> {
     const coinType = args.coinType ?? SUI_TYPE;
     assertSui(coinType);
     assertSpendAmount(args.amount);
-    const wallet = await this.wallet.address();
-    const agent = args.agent ? normalizeSuiAddress(args.agent) : wallet;
+    const wallet = normalizeRecipient(await this.wallet.address());
+    const agent = args.agent ? normalizeRecipient(args.agent) : wallet;
     const spendArgs = { ...args, to: normalizeRecipient(args.to) };
+    if (spendArgs.privacy === "sealed" && this.walrus.hosted) {
+      throw new PraxisSdkError("SEALED_REASONING_NOT_AVAILABLE", "sealed reasoning is unavailable in hosted Phase 1");
+    }
 
     const report = await this.runSimulation(wallet, agent, spendArgs.to, spendArgs.amount, coinType);
 
     const gate = await this.decide(report, spendArgs);
     const ts = Date.now();
+    const requestHash =
+      spendArgs.requestHash ??
+      blake3Hex(
+        canonicalize({
+          agent,
+          wallet,
+          to: spendArgs.to,
+          amount: spendArgs.amount.toString(),
+          coinType,
+          reasoning: spendArgs.reasoning,
+        }),
+      );
+    const purposeTag = stablePurposeTag({
+      organizationId: "direct-sdk",
+      assignmentId: agent,
+      idempotencyKey: spendArgs.idempotencyKey ?? requestHash,
+      requestHash,
+    });
     const blob = this.buildBlob({
       type: gate.proceed ? "spend" : "abort",
       agent,
@@ -119,6 +140,7 @@ export class Praxis {
       coinType,
       report,
       ts,
+      purposeTag,
       abortReason: gate.abortReason ?? null,
     });
 
@@ -134,7 +156,8 @@ export class Praxis {
       stored = sealed;
       sealPolicyId = sealed.policyId;
     }
-    const { blobId } = await this.walrus.writeJson(stored);
+    const evidence = buildReasoningEvidence(stored);
+    const { blobId } = await this.walrus.write(evidence.bytes);
 
     if (!gate.proceed) {
       await this.recordAbort(
@@ -153,9 +176,6 @@ export class Praxis {
       };
     }
 
-    const purposeTag = blake3Hex(
-      canonicalize({ agent, to: spendArgs.to, amount: spendArgs.amount.toString(), coinType, ts }),
-    );
     const { digest, receiptId } = await this.executeSpend({
       agent,
       to: spendArgs.to,
@@ -187,47 +207,17 @@ export class Praxis {
     amount: bigint,
     coinType: string,
   ): Promise<SimulationReport> {
-    const tx = new Transaction();
-    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
-    tx.transferObjects([coin], tx.pure.address(to));
-    tx.setSender(wallet);
-    const simulated = await this.client.simulateTransaction({
-      transaction: tx,
-      include: { balanceChanges: true, effects: true },
-    });
-    const dry = transactionResult(simulated);
-    const success = dry.status.success;
-    const balanceChanges: BalanceDelta[] = (dry.balanceChanges ?? []).map((bc) => ({
-      owner: bc.address,
-      coinType: bc.coinType,
-      amount: bc.amount,
-    }));
-    const gasEstimate = computeGas(dry.effects?.gasUsed ?? undefined);
-    const walletBalance = await this.getBalance(wallet, coinType);
-
-    const risk = assessRisk({
-      simSuccess: success,
-      balanceChanges,
-      gasEstimate,
+    const transaction = buildSuiTransferTransaction({ sender: wallet, recipient: to, amount });
+    return simulateSuiTransfer({
+      transport: this.transport,
+      transaction,
       sender: wallet,
       recipient: to,
       amount,
       coinType,
-      walletBalance,
       daySpent: this.spentToday.get(agent) ?? 0n,
       policy: this.policy,
     });
-
-    return {
-      success,
-      balanceChanges,
-      gasEstimate,
-      riskScore: risk.riskScore,
-      risks: risk.risks,
-      policyViolations: risk.policyViolations,
-      recommendation: risk.recommendation,
-      rawEffects: dry.effects,
-    };
   }
 
   private async decide(
@@ -265,43 +255,20 @@ export class Praxis {
     simPassed: boolean;
     purposeTag: string;
   }): Promise<{ digest: string; receiptId?: string }> {
-    const tx = new Transaction();
-    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(p.amount)]);
-    tx.moveCall({
-      target: `${this.deployment.packageId}::spending_receipt::record_spend`,
-      typeArguments: [p.coinType],
-      arguments: [
-        tx.object(this.deployment.agentCapId),
-        tx.object(this.deployment.agentIndexId),
-        coin,
-        tx.pure.address(p.agent),
-        tx.pure.address(p.to),
-        tx.pure.vector("u8", utf8Bytes(p.blobId)),
-        tx.pure.vector("u8", utf8Bytes(p.sealPolicyId)),
-        tx.pure.u8(p.riskScore),
-        tx.pure.bool(p.simPassed),
-        tx.pure.vector("u8", Array.from(hexToBytes(p.purposeTag))),
-        tx.object(this.deployment.clockId),
-      ],
+    return executeApprovedSuiSpend({
+      transport: this.transport,
+      signer: this.wallet,
+      deployment: this.deployment,
+      agent: p.agent,
+      recipient: p.to,
+      amount: p.amount,
+      coinType: p.coinType,
+      blobId: p.blobId,
+      sealPolicyId: p.sealPolicyId,
+      riskScore: p.riskScore,
+      simulationPassed: p.simPassed,
+      purposeTag: p.purposeTag,
     });
-
-    const signed = await this.wallet.signTransaction(tx);
-    const res = transactionResult(
-      await this.client.executeTransaction({
-        transaction: base64Bytes(signed.bytes),
-        signatures: [signed.signature],
-        include: { effects: true, objectTypes: true, events: true },
-      }),
-    );
-    if (!res.status.success) {
-      throw new Error(`spend tx failed: ${executionErrorMessage(res.status.error)}`);
-    }
-    const created = res.effects?.changedObjects.find(
-      (o) =>
-        o.idOperation === "Created" &&
-        res.objectTypes?.[o.objectId]?.includes("spending_receipt::SpendingReceipt"),
-    );
-    return { digest: res.digest, receiptId: created?.objectId };
   }
 
   private async recordAbort(
@@ -312,32 +279,17 @@ export class Praxis {
     reason: AbortReason,
     riskScore: number,
   ): Promise<void> {
-    const tx = new Transaction();
-    tx.moveCall({
-      target: `${this.deployment.packageId}::agent_registry::record_abort`,
-      arguments: [
-        tx.object(this.deployment.agentCapId),
-        tx.object(this.deployment.agentIndexId),
-        tx.pure.address(agent),
-        tx.pure.address(recipient),
-        tx.pure.u64(amount),
-        tx.pure.vector("u8", utf8Bytes(blobId)),
-        tx.pure.u8(ABORT_REASON_CODE[reason]),
-        tx.pure.u8(riskScore),
-        tx.object(this.deployment.clockId),
-      ],
+    await recordBlockedSuiIntent({
+      transport: this.transport,
+      signer: this.wallet,
+      deployment: this.deployment,
+      agent,
+      recipient,
+      amount,
+      blobId,
+      reason,
+      riskScore,
     });
-    const signed = await this.wallet.signTransaction(tx);
-    const res = transactionResult(
-      await this.client.executeTransaction({
-        transaction: base64Bytes(signed.bytes),
-        signatures: [signed.signature],
-        include: { effects: true },
-      }),
-    );
-    if (!res.status.success) {
-      throw new Error(`abort receipt tx failed: ${executionErrorMessage(res.status.error)}`);
-    }
   }
 
   private buildBlob(p: {
@@ -348,6 +300,7 @@ export class Praxis {
     coinType: string;
     report: SimulationReport;
     ts: number;
+    purposeTag: string;
     abortReason: AbortReason | null;
   }): ReasoningBlob {
     const blob: Omit<ReasoningBlob, "blake3"> = {
@@ -356,6 +309,7 @@ export class Praxis {
       agent: p.agent,
       wallet: p.wallet,
       ts: p.ts,
+      purpose_tag: p.purposeTag,
       intent: {
         to: p.args.to,
         amount: p.args.amount.toString(),
@@ -380,64 +334,24 @@ export class Praxis {
     return { ...blob, blake3: blake3Hex(canonicalize(blob)) };
   }
 
-  private async getBalance(owner: string, coinType: string): Promise<bigint> {
-    const b = await this.client.getBalance({ owner, coinType });
-    return BigInt(b.balance.balance);
-  }
 }
 
 function assertSui(coinType: string): void {
   if (coinType !== SUI_TYPE) {
-    throw new Error(`V1 supports SUI spends only (got ${coinType}); multi-coin is post-hackathon.`);
+    throw new PraxisSdkError("UNSUPPORTED_COIN", `Phase 1 supports SUI only (got ${coinType})`);
   }
 }
 
 function assertSpendAmount(amount: bigint): void {
-  if (amount <= 0n || amount > 18_446_744_073_709_551_615n) {
-    throw new Error("amount must be a positive u64 value");
+  if (typeof amount !== "bigint" || amount <= 0n || amount > 18_446_744_073_709_551_615n) {
+    throw new PraxisSdkError("INVALID_AMOUNT", "amount must be a positive u64 value");
   }
 }
 
 function normalizeRecipient(address: string): string {
   try {
-    return normalizeSuiAddress(address);
-  } catch {
-    throw new Error("recipient must be a valid Sui address");
+    return normalizeSuiAddressStrict(address);
+  } catch (cause) {
+    throw new PraxisSdkError("INVALID_ADDRESS", "address is not a valid Sui address", { cause });
   }
-}
-
-function utf8Bytes(s: string): number[] {
-  return Array.from(new TextEncoder().encode(s));
-}
-
-function base64Bytes(value: string): Uint8Array {
-  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(value, "base64"));
-  const decoded = atob(value);
-  return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
-}
-
-function transactionResult<T extends { $kind: "Transaction" | "FailedTransaction"; Transaction?: unknown; FailedTransaction?: unknown }>(
-  result: T,
-): NonNullable<T["Transaction"]> {
-  return (result.$kind === "Transaction" ? result.Transaction : result.FailedTransaction) as NonNullable<
-    T["Transaction"]
-  >;
-}
-
-function executionErrorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error) {
-    return String((error as { message: unknown }).message);
-  }
-  return "unknown";
-}
-
-function computeGas(gasUsed?: {
-  computationCost: string;
-  storageCost: string;
-  storageRebate: string;
-}): bigint {
-  if (!gasUsed) return 0n;
-  const total =
-    BigInt(gasUsed.computationCost) + BigInt(gasUsed.storageCost) - BigInt(gasUsed.storageRebate);
-  return total < 0n ? 0n : total;
 }

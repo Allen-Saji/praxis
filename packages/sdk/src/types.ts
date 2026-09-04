@@ -69,6 +69,10 @@ export interface SpendArgs {
   reasoning: ReasoningInput;
   /** Logical agent identity recorded on the receipt; defaults to the wallet. */
   agent?: string;
+  /** Stable caller-supplied key used to derive the on-chain purpose tag. */
+  idempotencyKey?: string;
+  /** Stable hash of the approved intent; derived when omitted. */
+  requestHash?: string;
   privacy?: Privacy;
   auditors?: string[];
   /** Skip the agent review gate for low-risk, policy-approved spends. */
@@ -110,6 +114,8 @@ export interface ReasoningBlob {
   agent: string;
   wallet: string;
   ts: number;
+  /** Stable 32-byte purpose tag committed by the receipt transaction. */
+  purpose_tag?: string;
   intent: {
     to: string;
     amount: string;

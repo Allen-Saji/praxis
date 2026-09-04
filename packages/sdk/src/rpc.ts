@@ -1,6 +1,5 @@
 import { GrpcWebFetchTransport, SuiGrpcClient } from "@mysten/sui/grpc";
-import { JsonRpcHTTPTransport, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { resolveGrpcUrl, resolveLegacyEventRpcUrl } from "./config";
+import { resolveGrpcUrl } from "./config";
 import type { Network } from "./types";
 
 /**
@@ -85,16 +84,4 @@ export function makeSuiClient(network: Network, grpcUrl?: string): SuiGrpcClient
   return new SuiGrpcClient({ transport, network });
 }
 
-/**
- * Transitional read-only event client for records outside official GraphQL
- * retention. Do not use this for execution, simulation, or control-plane data.
- */
-export function makeLegacyEventClient(network: Network, rpcUrl?: string): SuiJsonRpcClient {
-  return new SuiJsonRpcClient({
-    network,
-    transport: new JsonRpcHTTPTransport({
-      url: resolveLegacyEventRpcUrl(network, rpcUrl),
-      fetch: resilientFetch(),
-    }),
-  });
-}
+export { makeLegacyDashboardEventBridge, makeLegacyEventClient } from "./legacy-dashboard";

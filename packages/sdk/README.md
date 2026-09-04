@@ -28,12 +28,14 @@ npm install @allen-saji/praxis @mysten/sui
 ## Quickstart
 
 ```typescript
-import { Praxis, KeypairAdapter } from "@allen-saji/praxis";
+import { Praxis, KeypairAdapter, makeSuiClient } from "@allen-saji/praxis";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 
+const keypair = Ed25519Keypair.fromSecretKey(process.env.KEY!);
+const client = makeSuiClient("testnet");
 const praxis = new Praxis({
   network: "testnet",
-  wallet: new KeypairAdapter(Ed25519Keypair.fromSecretKey(process.env.KEY!)),
+  wallet: new KeypairAdapter(keypair, client),
 });
 
 const result = await praxis.spend({
@@ -42,7 +44,8 @@ const result = await praxis.spend({
   reasoning: { prompt, decision, model },
 });
 
-// result.status is "confirmed", "aborted", or "policy_block"
+// result.status is "confirmed" or "aborted".
+// Confirmed results include txDigest and receiptId; aborted results include abortReason.
 ```
 
 ## The gate
@@ -63,9 +66,10 @@ if (result.status === "aborted") {
 }
 ```
 
-A blocked spend never signs and never moves funds, and the block itself is
-logged to Walrus and counted on-chain. That is the point: an auditor can prove
-what was stopped, not just what went through.
+A blocked spend never signs or executes a transfer. After evidence publication,
+the trusted operator may sign a separate zero-transfer abort record so the block
+is counted on-chain. That is the point: an auditor can prove what was stopped,
+not just what went through.
 
 ## Reading the audit trail
 
@@ -81,24 +85,37 @@ const stream = await reader.stream(50); // confirmed + aborted, interleaved
 
 ## Wallet adapters
 
-- `KeypairAdapter` wraps a Sui `Ed25519Keypair` for server-side agents.
+- `KeypairAdapter` wraps a Sui `Ed25519Keypair` for a trusted Testnet operator
+  process. Do not place it in an untrusted agent process.
 - `GenericAdapter` adapts any `{ address, signTransaction }` pair, so Praxis is
   wallet-agnostic and never custodies a key itself.
 
 ## What runs on Sui
 
-- Sui gRPC transaction simulation for pre-flight simulation of every spend.
+- Sui gRPC transaction simulation and execution, plus GraphQL event/object
+  reads. Normal SDK work does not depend on the deprecated JSON-RPC client.
 - Walrus for the reasoning and simulation blobs (spends and blocks alike).
 - Move objects: `SpendingReceipt`, `AgentIndex`, `SpendingPolicy`.
 - The coin transfer, receipt creation, and index update happen atomically in one
   programmable transaction block, so a receipt can never exist without its spend.
 
-## Scope
+## Direct SDK and hosted Phase 1
 
-v1 is testnet and SUI-denominated. The sealed-reasoning path uses a local
-encryption stand-in with the same shapes as Seal; swapping in Seal key servers
-is drop-in. Real wallet-provider adapters (Privy, Turnkey), multi-coin, and
-mainnet are post-v1.
+This package preserves the direct `Praxis.spend()` API while also exposing the
+transport-neutral simulation, evidence, execution, and read services used by
+the hosted control plane. Execution errors distinguish definite failure from an
+ambiguous submission and retain a derived transaction digest when available.
+Hosted orchestration uses that digest for reconciliation before it permits a
+retry or releases reserved budget.
+
+Phase 1 is Testnet and SUI-only. Hosted requests support public reasoning only
+and require verified hosted Walrus publication before signing an allowed spend.
+The local Seal-shaped encryption adapter is a direct-demo compatibility path,
+not production Seal and not a hosted privacy claim.
+
+Production isolated custody, multi-wallet Move authorization, real Seal access
+policy/key servers, authenticated production Walrus publishing, multi-coin, and
+mainnet are explicit later gates.
 
 ## License
 

@@ -1,4 +1,5 @@
 import type { Network } from "./types";
+import { PraxisSdkError } from "./errors";
 
 export interface Deployment {
   packageId: string;
@@ -73,6 +74,9 @@ export function resolveGraphqlUrl(network: Network, override?: string): string {
 
 /** Resolve the temporary historical-event provider endpoint. */
 export function resolveLegacyEventRpcUrl(network: Network, override?: string): string {
+  if (network !== "testnet") {
+    throw new PraxisSdkError("CONFIGURATION_ERROR", "the legacy event bridge is Testnet dashboard-only");
+  }
   if (override) return override;
   const fromEnv =
     typeof process !== "undefined" ? process.env?.SUI_LEGACY_EVENT_RPC_URL : undefined;

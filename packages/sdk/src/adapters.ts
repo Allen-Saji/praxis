@@ -1,5 +1,5 @@
 import type { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import type { SuiGrpcClient } from "@mysten/sui/grpc";
+import type { ClientWithCoreApi } from "@mysten/sui/client";
 import type { Transaction } from "@mysten/sui/transactions";
 import type { SignedTransaction, WalletAdapter } from "./types";
 
@@ -7,7 +7,7 @@ import type { SignedTransaction, WalletAdapter } from "./types";
 export class KeypairAdapter implements WalletAdapter {
   constructor(
     private keypair: Ed25519Keypair,
-    private client: SuiGrpcClient,
+    private client: ClientWithCoreApi,
   ) {}
 
   async address(): Promise<string> {
@@ -26,7 +26,7 @@ export interface GenericAdapterOptions {
   address: string | (() => Promise<string>);
   /** Sign the BCS tx bytes, returning a Sui signature string. */
   sign: (txBytes: Uint8Array) => Promise<string>;
-  client: SuiGrpcClient;
+  client: ClientWithCoreApi;
 }
 
 /** Escape hatch: wrap any provider that can sign transaction bytes. */
