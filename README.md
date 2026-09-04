@@ -2,11 +2,12 @@
 
 Wallet-agnostic security, simulation, and audit layer for AI agent spending on Sui.
 
-Praxis sits between an AI agent and its wallet. The agent never holds a private
-key. Before every spend, Praxis simulates the transaction, risk-scores the
-result, and hands a report back to the agent to confirm or abort. Only then does
-it ask the wallet to sign. Every decision, including aborts, is written to Walrus
-with a tamper-evident on-chain receipt.
+Praxis sits between an AI agent and a Testnet execution wallet. Hosted agents
+authenticate with scoped credentials and never receive the signing key. Every
+intent is checked against versioned per-transaction, daily, and monthly policy,
+reserved transactionally in PostgreSQL, simulated, and written to verified
+Walrus evidence before an allowed transfer can be signed. Confirmed and blocked
+outcomes are visible in the public audit dashboard and the owner workspace.
 
 Built for Sui Overflow 2026 (Walrus track). Testnet, SUI-denominated spends in v1.
 
@@ -14,11 +15,11 @@ Built for Sui Overflow 2026 (Walrus track). Testnet, SUI-denominated spends in v
 
 ![Praxis architecture](docs/praxis-architecture.png)
 
-The agent decides and holds no keys. Every spend enters the Praxis SDK as
-`praxis.spend()`, is dry-run simulated, risk-scored against 7 rules, and gated.
-Only on a proceed does the wallet adapter sign. Every decision, confirm and
-abort, is persisted on Sui in one atomic PTB across Walrus, Move objects, and
-Seal.
+The agent decides and holds no keys. In direct SDK mode, every spend enters as
+`praxis.spend()`. In hosted mode, the agent submits an authenticated intent to
+`POST /api/v1/spend-intents`. Praxis resolves the wallet and assignment policy,
+reserves shared budget, dry-run simulates, publishes evidence, and only then
+allows the configured wallet adapter to sign.
 
 The novel part: the simulation and risk report flow back to the agent before
 signing, so the agent can self-correct. A prompt-injected agent that tries to
@@ -29,22 +30,25 @@ artifact.
 
 ```
 move/praxis_core      Move package: spending_receipt, agent_registry, policy
-packages/sdk          @allen-saji/praxis: the spend flow, risk engine, adapters,
-                      Walrus + Seal integration, and a read-only PraxisReader
+packages/sdk          @allen-saji/praxis: transport-neutral Sui/Walrus services,
+                      direct spend compatibility, and PraxisReader
+packages/control-plane Pure policy, money, state-machine, and auth domain logic
+packages/db           PostgreSQL schema, migrations, locks, repositories, audit
 apps/agents           Sample agents: researcher, trader, attacker
-apps/web              Next.js dashboard (read-only, decrypt-only)
-scripts               Move deploy script
+apps/web              Public audit dashboard plus authenticated owner workspace
+scripts               Reconciliation, deterministic seed, guarded live smoke
 deployments           Recorded testnet package + object ids
 ```
 
 ## How a spend works
 
-`Praxis.spend()` runs: build the transfer, dry-run it with
-Sui gRPC transaction simulation, score the result against the built-in rules, return
-a report, gate on the recommendation, sign through the wallet adapter, write the
-reasoning to Walrus, and emit an on-chain receipt in one programmable
-transaction. Aborts skip the signing and transfer but still write the reasoning
-and bump the on-chain abort counter.
+Hosted spend runs: authenticate credential, derive tenant/wallet/agent identity,
+create or load an idempotent intent, resolve immutable policy versions, reserve
+the UTC day/month allowance under PostgreSQL locks, simulate through Sui gRPC,
+publish and verify public evidence through Walrus, sign, submit, wait, and settle
+the reservation. Ambiguous submission retains its reservation and is reconciled
+by stored transaction digest before any retry. A blocked spend never executes a
+transfer; abort evidence and an on-chain abort record are tracked separately.
 
 Risk rules (v1): `DRAIN_DETECTED`, `BLOCKED_RECIPIENT`, `UNKNOWN_RECIPIENT`,
 `OVER_TX_LIMIT`, `OVER_DAILY_LIMIT`, `SIM_FAILED`, `HIGH_GAS`. Scores 0 to 100;
@@ -53,11 +57,11 @@ review at 30, block at 80.
 ## SDK quickstart
 
 ```ts
-import { Praxis, KeypairAdapter } from "@allen-saji/praxis";
+import { Praxis, KeypairAdapter, makeSuiClient } from "@allen-saji/praxis";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 
-const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
+const keypair = Ed25519Keypair.fromSecretKey(process.env.KEY!);
+const client = makeSuiClient("testnet");
 const wallet = new KeypairAdapter(keypair, client);
 
 const praxis = new Praxis({
@@ -72,7 +76,11 @@ const result = await praxis.spend({
   reasoning: { prompt, decision, model: "claude-opus-4-8" },
   onReport: (report) => report.recommendation === "proceed",
 });
-// -> { status: "confirmed" | "aborted", receiptId?, walrusBlobId, txDigest?, simulationReport }
+if (result.status === "confirmed") {
+  console.log(result.txDigest, result.receiptId, result.walrusBlobId);
+} else {
+  console.log(result.abortReason, result.walrusBlobId, result.simulationReport);
+}
 ```
 
 Read-only consumers (dashboards, auditors) use `PraxisReader`, which needs no
@@ -91,12 +99,14 @@ await reader.reveal(blobId, viewer); // decrypt sealed reasoning if allowlisted
 
 ```bash
 pnpm install
-pnpm move:test                       # Move unit tests
-pnpm --filter @allen-saji/praxis build      # build the SDK
-pnpm --filter @allen-saji/praxis-web dev        # run the dashboard
+cp .env.example .env
+pnpm db:migrate
+pnpm test
+pnpm build
+pnpm --filter @allen-saji/praxis-web dev
 
-# Run the sample agents against testnet (operator key from your Sui keystore):
-PRAXIS_OPERATOR_KEY=suiprivkey... pnpm --filter @allen-saji/praxis-agents start all
+# Separately, with no live credentials required:
+pnpm move:test
 ```
 
 Deploy the Move package and record the ids:
@@ -109,56 +119,41 @@ pnpm deploy:move                     # publishes to the active Sui env
 
 Current ids live in `deployments/testnet.json` and `packages/sdk/src/config.ts`.
 
-## Current scope
+## Phase 1 boundary
 
-v1 is a testnet, SUI-only SDK and read-only dashboard. It ships
-`KeypairAdapter` and `GenericAdapter`, seven deterministic risk checks, Sui
-receipt and abort records, and Walrus-backed decision evidence. The sealed
-reasoning path currently uses a local encryption adapter rather than production
-Seal key servers.
+Phase 1 is a hosted Sui Testnet preview for one executable wallet per workspace
+and SUI transfers only. It includes Sui personal-message owner authentication,
+secure server sessions, tenant-scoped workspaces, three or more agent
+assignments, versioned wallet and assignment policy, scoped/revocable agent
+credentials, persistent shared budgets, idempotent orchestration, verified
+hosted Walrus evidence, submission-unknown reconciliation, an owner command
+deck, and the existing public audit dashboard. Normal SDK reads, simulation,
+execution, and waits use the current Sui gRPC/GraphQL clients rather than the
+deprecated JSON-RPC client.
 
-The current sample agents use logical agent addresses while one operator wallet
-signs for all of them. Their policies are configured in code, daily spend is
-tracked in process, and the demo keypair is not isolated from the agent process.
-This proves the spend-control flow, but it is not yet a hosted or production
-wallet service.
+Hosted Phase 1 accepts only `privacy: "public"`. It makes no hosted sealed
+reasoning claim. The local Seal-shaped encryption adapter remains available to
+the legacy direct SDK demo only.
 
-## Future scope
+Remaining production gates are isolated custody, truthful multi-wallet Move
+authorization, real Seal key-server policy, authenticated production Walrus
+publishing, alerting, multi-coin support, mainnet deployment, external security
+review, and capped/monitored rollout. The current `demo_keypair` adapter is for a
+funded disposable Testnet wallet, not production custody.
 
-Praxis will evolve from an SDK into a hosted wallet control service for
-organizations managing multiple wallets and multiple agents. The planned
-product includes:
+## Phase 1 seed and live smoke
 
-- **Hosted control plane.** A managed endpoint receives agent payment intents,
-  simulates and risk-scores them, applies policy, stores the decision evidence,
-  and requests signing from a connected wallet or custody provider only after
-  approval.
-- **Multiple wallets and isolated agent controls.** An organization can connect
-  several treasury or operational wallets, each with its own default limits and
-  rules. Each wallet can serve multiple authenticated agents, and wallet-agent
-  assignments define exactly which agent may use which wallet. Every agent can
-  then have its own transaction, daily, and monthly limits; recipient allowlists
-  and blocklists; asset and action rules; and risk threshold. Persistent
-  accounting isolates usage by organization, wallet, and agent so one agent
-  cannot consume another agent's allowance.
-- **Rules configured by conversation.** An operator can tell the Praxis agent,
-  "The research agent may spend up to 5 SUI per day on approved data vendors."
-  Praxis converts that request into a typed, versioned policy proposal, shows
-  the exact change, and activates it only after human review.
-- **Operations dashboard.** The existing audit dashboard becomes a workspace
-  for organizations, wallets, and agents. Teams can compare activity across
-  wallets, inspect each wallet's assigned agents, and view wallet-level and
-  agent-level spending, budget usage, recipients, risk distribution, blocked
-  attempts, policy history, Sui receipts, and Walrus evidence from one place.
-- **Reports and alerts.** Daily and weekly spend summaries show confirmed
-  payments and remaining budgets by wallet and agent, plus repeated blocks,
-  unusual recipients, and risk trends. Threshold alerts can be delivered
-  through email, Slack, or webhooks.
-- **Production wallet integrations.** Add isolated signing and provider adapters
-  for services such as Privy and Turnkey, authenticated agent identities,
-  persistent shared policy state, real Seal encryption, durable Walrus
-  publishing, multi-coin support, Sui mainnet deployment, and an external
-  security review.
+Generate three agent credentials locally, place the tokens and canonical
+addresses in `.env`, then run `pnpm seed:phase1`. The seed is additive and
+idempotent; without `PRAXIS_LIVE_TESTNET_CONFIRM=YES`, it leaves the wallet
+disabled. Enabling verifies that `PRAXIS_OPERATOR_KEY` owns both the configured
+wallet address and the recorded Testnet `AgentCap`.
+
+`pnpm smoke:phase1` is intentionally guarded. Run it only after explicit
+authorization with a funded disposable Testnet wallet. It spends Testnet SUI,
+publishes Walrus blobs, checks replay/conflict/block/budget/concurrency paths,
+and prints non-secret evidence identifiers. A process restart and final UI,
+PostgreSQL, Walrus, and Sui review remain manual acceptance steps.
 
 See `docs/SPEC.md` for the full product and technical spec.
 
