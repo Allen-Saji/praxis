@@ -12,7 +12,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Primary"
-      className="grid shrink-0 grid-cols-3 border-t border-[var(--divider)] bg-[var(--workspace)] px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden"
+      className="grid shrink-0 grid-cols-4 border-t border-[var(--divider)] bg-[var(--workspace)] px-1 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 md:hidden"
     >
       {NAV_ITEMS.map((item) => {
         const active = item.match(pathname);

@@ -1,0 +1,19 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requireWorkspaceOverview } from "@/lib/workspace-view.server";
+import { StatusAction } from "@/components/workspace/WorkspaceControls";
+import { Empty, Panel, StatePill, WorkspaceFrame } from "@/components/workspace/WorkspaceFrame";
+
+export const dynamic = "force-dynamic";
+export default async function WalletPage({ params }: { params: Promise<{ slug: string; walletId: string }> }) {
+  const { slug, walletId } = await params; const data = await requireWorkspaceOverview(slug); const wallet = data.wallets.find((x) => x.id === walletId); if (!wallet) notFound();
+  const scope = data.scopes.find((x) => x.walletId === wallet.id); const active = data.policyVersions.find((x) => x.version.id === scope?.currentVersionId)?.version;
+  const counters = data.walletCounters.filter((x) => x.wallet.id === wallet.id).map((x) => x.counter);
+  return <WorkspaceFrame slug={slug} name={data.organization.name} eyebrow="Treasury boundary" title={wallet.label} description="One signer-backed Testnet wallet shared by all assigned agents. Enabling verifies the configured signer and AgentCap owner.">
+    <div className="grid gap-5 lg:grid-cols-[1.35fr_.65fr]"><Panel title="Wallet identity"><dl className="grid gap-4"><Row label="Address" value={wallet.suiAddress} mono /><Row label="Network" value="Sui Testnet only" /><Row label="Execution" node={<StatePill value={wallet.executionStatus} />} /><Row label="Adapter" value={wallet.adapterType} /><Row label="Policy" node={active && scope ? <Link className="focus-ring text-[var(--accent)] hover:underline" href={`/app/workspaces/${slug}/policies/${scope.id}`}>Active v{active.version}</Link> : <span className="text-[var(--risk-medium)]">No active policy</span>} /></dl></Panel>
+      <Panel title="Execution control" detail="Status changes are audited. There is no hard-delete action."><div className="grid gap-3">{wallet.executionStatus === "enabled" ? <StatusAction endpoint={`/api/workspaces/${data.organization.id}/wallets/${wallet.id}/status`} status="suspended" label="Suspend wallet execution" danger /> : <StatusAction endpoint={`/api/workspaces/${data.organization.id}/wallets/${wallet.id}/status`} status="enabled" label="Enable verified Testnet wallet" />}<p className="text-[11px] leading-5 text-[var(--text-low)]">Suspending blocks new hosted spends. It does not erase decisions, evidence, policies, or counters.</p></div></Panel>
+    </div>
+    <Panel title="Shared budget usage" detail="Counters are persisted independently for UTC day and month windows.">{counters.length ? <div className="grid gap-3 sm:grid-cols-2">{counters.map((counter) => <div key={`${counter.periodKind}-${counter.periodStart.toISOString()}`} className="rounded border border-[var(--border)] bg-[var(--bg)] p-4"><div className="flex justify-between gap-2"><span className="font-mono text-[11px] uppercase text-[var(--text-low)]">{counter.periodKind}</span><span className="font-mono text-[10px] text-[var(--text-low)]">{counter.periodStart.toISOString()}</span></div><p className="mt-4 font-mono text-lg tabular">{counter.spentMist} spent</p><p className="mt-1 font-mono text-[12px] text-[var(--risk-medium)]">{counter.reservedMist} reserved MIST</p></div>)}</div> : <Empty>No budget has been reserved or spent in the current stored windows.</Empty>}</Panel>
+  </WorkspaceFrame>;
+}
+function Row({ label, value, node, mono = false }: { label: string; value?: string; node?: React.ReactNode; mono?: boolean }) { return <div className="grid gap-1 border-b border-[var(--divider)] pb-3 last:border-0 last:pb-0"><dt className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-low)]">{label}</dt><dd className={`${mono ? "break-all font-mono text-[12px]" : "text-[13px]"}`}>{node ?? value}</dd></div>; }

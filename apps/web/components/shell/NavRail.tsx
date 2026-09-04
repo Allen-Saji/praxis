@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, BookOpen } from "lucide-react";
+import { LayoutDashboard, Bot, BookOpen, Building2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Wordmark } from "@/components/brand/Wordmark";
@@ -20,6 +20,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Dashboard",
     icon: LayoutDashboard,
     match: (p) => p === "/app",
+  },
+  {
+    href: "/app/workspaces",
+    label: "Workspaces",
+    icon: Building2,
+    match: (p) => p.startsWith("/app/workspaces"),
   },
   {
     href: "/app/agents",

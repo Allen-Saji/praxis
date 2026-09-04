@@ -110,6 +110,27 @@ body {
   font-feature-settings: "cv01", "cv02";
 }
 
+input, textarea, select, button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.praxis-connect button {
+  min-height: 44px;
+}
+
+@media (max-width: 374px) {
+  body { min-width: 320px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Incident-first workspace surfaces. Evidence gets contrast; decoration does not. */
 .evidence-surface {
   background: var(--surface);

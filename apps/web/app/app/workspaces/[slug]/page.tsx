@@ -1,0 +1,37 @@
+import Link from "next/link";
+import { ArrowRight, Bot, CircleDollarSign, Clock3, KeyRound, Shield, WalletCards } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { requireWorkspaceOverview } from "@/lib/workspace-view.server";
+import { CreateAgentForm, CreateAssignmentForm, CredentialIssue, RegisterWalletForm, StatusAction } from "@/components/workspace/WorkspaceControls";
+import { Empty, Panel, StatePill, WorkspaceFrame } from "@/components/workspace/WorkspaceFrame";
+
+export const dynamic = "force-dynamic";
+export default async function WorkspaceOverviewPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params; const data = await requireWorkspaceOverview(slug); const base = `/app/workspaces/${slug}`;
+  const confirmed = data.decisions.filter((x) => x.state === "confirmed").reduce((sum, x) => sum + BigInt(x.amountMist), 0n);
+  const blocked = data.decisions.filter((x) => x.state === "blocked" || x.state.endsWith("_blocked")).length;
+  const evidenceBacklog = data.decisions.filter((x) => x.evidenceState !== "published" && !["received", "failed", "expired"].includes(x.state)).length;
+  const uncertain = data.decisions.filter((x) => x.state === "submission_unknown").length;
+  const reserved = data.walletCounters.filter((x) => x.counter.periodKind === "day").reduce((sum, x) => sum + BigInt(x.counter.reservedMist), 0n);
+  const activeAgents = data.agents.filter((x) => x.status === "active").length;
+  const cards: Array<{ label: string; value: string; icon: LucideIcon }> = [
+    { label: "Confirmed spend", value: mist(confirmed), icon: CircleDollarSign },
+    { label: "Reserved today", value: mist(reserved), icon: Clock3 },
+    { label: "Active agents", value: String(activeAgents), icon: Bot },
+    { label: "Protected blocks", value: String(blocked), icon: Shield },
+    { label: "Evidence backlog", value: String(evidenceBacklog), icon: KeyRound },
+    { label: "Submission unknown", value: String(uncertain), icon: WalletCards },
+  ];
+  return <WorkspaceFrame slug={slug} name={data.organization.name} eyebrow="Execution overview" title={data.organization.name} description="Live PostgreSQL control-plane state. Every number below is tenant scoped and survives process restart.">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">{cards.map(({ label, value, icon: Icon }) => <div key={label} className="evidence-surface min-w-0 rounded-[var(--r-md)] p-4"><Icon className="h-4 w-4 text-[var(--text-low)]" /><p className="mt-4 font-mono text-xl font-semibold tabular text-[var(--text-hi)]">{value}</p><p className="mt-1 text-[11px] text-[var(--text-low)]">{label}</p></div>)}</div>
+    {uncertain ? <div className="rounded-[var(--r-md)] border border-[var(--risk-medium)]/35 bg-[var(--risk-medium-tint)] p-4 text-[13px] text-[var(--risk-medium)]">{uncertain} submission has an uncertain chain outcome. Do not retry it. Reconciliation retains its reservation until status is known.</div> : null}
+    <div className="grid gap-5 xl:grid-cols-2">
+      <Panel title="Executable wallet" detail="Phase 1 allows one enabled Testnet wallet per workspace.">{data.wallets.length ? <div className="space-y-3">{data.wallets.map((wallet) => { const scope = data.scopes.find((x) => x.walletId === wallet.id); const active = data.policyVersions.find((x) => x.version.id === scope?.currentVersionId); return <div key={wallet.id} className="rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--bg)] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><Link href={`${base}/wallets/${wallet.id}`} className="focus-ring font-semibold hover:text-[var(--accent)]">{wallet.label}</Link><p className="mt-1 max-w-full truncate font-mono text-[11px] text-[var(--text-low)]">{wallet.suiAddress}</p></div><StatePill value={wallet.executionStatus} /></div><div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--divider)] pt-3 text-[12px] text-[var(--text-mid)]"><span>{active ? `Policy v${active.version.version}` : "No active policy"}</span>{scope ? <Link className="focus-ring inline-flex min-h-11 items-center gap-1 hover:text-[var(--accent)]" href={`${base}/policies/${scope.id}`}>Policy <ArrowRight className="h-3.5 w-3.5" /></Link> : null}</div></div>; })}</div> : <RegisterWalletForm organizationId={data.organization.id} />}</Panel>
+      <Panel title="Agents" detail="Create identities first, then bind them to the active wallet policy."><div className="space-y-4"><CreateAgentForm organizationId={data.organization.id} />{data.agents.length ? <div className="divide-y divide-[var(--divider)] border-t border-[var(--divider)]">{data.agents.map((agent) => <Link key={agent.id} href={`${base}/agents/${agent.id}`} className="focus-ring flex min-h-14 items-center justify-between gap-3 px-1 py-2 hover:text-[var(--accent)]"><span className="min-w-0 truncate text-[13px]">{agent.name}</span><StatePill value={agent.status} /></Link>)}</div> : null}</div></Panel>
+    </div>
+    <Panel title="Assignments" detail="Creation clones the current wallet policy into a disabled assignment draft."><CreateAssignmentForm organizationId={data.organization.id} wallets={data.wallets.map(({ id, label }) => ({ id, label }))} agents={data.agents.filter((x) => x.status === "active").map(({ id, name }) => ({ id, name }))} />
+      <div className="mt-5 grid gap-3">{data.assignments.length ? data.assignments.map((assignment) => { const agent = data.agents.find((x) => x.id === assignment.agentId); const wallet = data.wallets.find((x) => x.id === assignment.walletId); const scope = data.scopes.find((x) => x.assignmentId === assignment.id); const credential = data.credentials.find((x) => x.assignmentId === assignment.id && !x.revokedAt); return <div key={assignment.id} className="grid min-w-0 gap-4 rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--bg)] p-4 lg:grid-cols-[1fr_auto] lg:items-center"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Link href={`${base}/agents/${assignment.agentId}`} className="focus-ring font-semibold hover:text-[var(--accent)]">{agent?.name ?? "Unknown agent"}</Link><StatePill value={assignment.status} /></div><p className="mt-1 text-[11px] text-[var(--text-low)]">{wallet?.label ?? "Unknown wallet"} / {credential ? `credential ${credential.tokenPrefix}... active` : "no active credential"}</p><div className="mt-3 flex flex-wrap gap-2">{scope ? <Link href={`${base}/policies/${scope.id}`} className="focus-ring inline-flex min-h-11 items-center rounded border border-[var(--border-hi)] px-3 text-[12px] hover:text-[var(--accent)]">Review assignment policy</Link> : null}{assignment.status !== "active" ? <StatusAction endpoint={`/api/workspaces/${data.organization.id}/assignments/${assignment.id}/status`} status="active" label="Enable assignment" /> : <StatusAction endpoint={`/api/workspaces/${data.organization.id}/assignments/${assignment.id}/status`} status="disabled" label="Disable assignment" />}</div></div><CredentialIssue organizationId={data.organization.id} assignmentId={assignment.id} /></div>; }) : <Empty>No assignments yet. An active wallet policy is required before one can be created.</Empty>}</div>
+    </Panel>
+  </WorkspaceFrame>;
+}
+function mist(value: bigint) { const whole = value / 1_000_000_000n; const fractional = (value % 1_000_000_000n).toString().padStart(9, "0").replace(/0+$/, ""); return `${whole}${fractional ? `.${fractional}` : ""} SUI`; }
