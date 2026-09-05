@@ -16,18 +16,18 @@ export function FinalCta() {
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Link
-            href="/docs"
+            href="/app"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-sm)] bg-[var(--accent)] px-5 text-[14px] font-semibold text-[#04121a] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
-            Start with the SDK
+            Open app
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
-            href="/app"
+            href="/docs"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-sm)] border border-white/15 px-5 text-[14px] font-medium text-[var(--text-hi)] transition-colors duration-150 hover:border-white/30 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             <ShieldCheck className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
-            Open dashboard
+            Developer docs
           </Link>
         </div>
       </div>

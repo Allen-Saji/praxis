@@ -5,6 +5,7 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 export function HeroPremium() {
   return (
     <>
+      <a href="https://www.sui.io/blog/sui-overflow-2026-winners" target="_blank" rel="noreferrer" className="focus-ring inline-flex min-h-11 items-center rounded-full border border-[var(--border-hi)] bg-[var(--panel)] px-4 text-center text-xs text-[var(--text-mid)]">Sui Overflow 2026 / Walrus track / 4th place</a>
       <h1
         className="rise max-w-[19ch] text-[clamp(38px,6.5vw,68px)] font-semibold leading-[1.08] tracking-[-0.025em] text-[var(--text-hi)]"
       >
@@ -23,18 +24,18 @@ export function HeroPremium() {
         className="rise flex flex-wrap items-center justify-center gap-3"
       >
         <Link
-          href="/docs"
+          href="/app"
           className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-[var(--r-sm)] bg-[var(--accent)] px-5 text-[15px] font-semibold text-[#04121a] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         >
-          Read the quickstart
+          Open app
           <ArrowRight className="h-4 w-4" />
         </Link>
         <Link
-          href="/app"
+          href="/docs"
           className="glass inline-flex h-11 cursor-pointer items-center gap-2 rounded-[var(--r-sm)] px-5 text-[15px] font-medium text-[var(--text-hi)] transition-colors duration-150 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         >
           <ShieldCheck className="h-4 w-4 text-[var(--accent)]" />
-          Open the dashboard
+          Read the quickstart
         </Link>
       </div>
     </>

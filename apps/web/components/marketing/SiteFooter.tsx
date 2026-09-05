@@ -35,7 +35,7 @@ export function SiteFooter({ packageId }: { packageId: string }) {
               href="/app"
               className="inline-flex min-h-11 min-w-11 items-center justify-center text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)]"
             >
-              Dashboard
+              Open app
             </Link>
             <Link
               href="https://github.com/Allen-Saji/praxis"
@@ -46,9 +46,7 @@ export function SiteFooter({ packageId }: { packageId: string }) {
               GitHub
             </Link>
           </div>
-          <span className="font-mono text-[11px] text-[var(--text-low)]" title={packageId}>
-            testnet package {truncateMiddle(packageId, 6, 4)}
-          </span>
+
         </div>
       </div>
     </footer>

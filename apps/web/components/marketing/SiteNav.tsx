@@ -25,7 +25,7 @@ export function SiteNav() {
             href="/app"
             className="inline-flex min-h-11 items-center rounded-[var(--r-sm)] px-3 text-[var(--text-mid)] transition-colors duration-150 hover:text-[var(--text-hi)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
-            Dashboard
+            Open app
           </Link>
           <Link
             href="https://github.com/Allen-Saji/praxis"

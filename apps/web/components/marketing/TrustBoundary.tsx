@@ -68,9 +68,9 @@ export function TrustBoundary() {
         </div>
 
         <div className="mt-12 grid gap-3 border border-dashed border-white/15 px-5 py-4 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--text-low)] sm:grid-cols-3">
-          <span>v1 / Sui testnet</span>
-          <span>asset / SUI only</span>
-          <span>sealed reasoning / local Seal stand-in</span>
+          <span>Sui Testnet preview</span>
+          <span>SUI payments</span>
+          <span>Hosted reasoning is public</span>
         </div>
       </div>
     </section>
