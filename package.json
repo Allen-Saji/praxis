@@ -11,7 +11,7 @@
   "scripts": {
     "packages:build": "pnpm -r --filter \"./packages/*\" build",
     "format:check": "node scripts/check-format.mjs",
-    "lint": "pnpm --filter @allen-saji/praxis-web lint",
+    "lint": "pnpm packages:build && pnpm --filter @allen-saji/praxis-web lint",
     "typecheck": "pnpm packages:build && pnpm -r --if-present typecheck && tsc --noEmit -p tsconfig.scripts.json",
     "test:unit": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test",
     "test:db": "pnpm packages:build && pnpm --filter @allen-saji/praxis-db test:db",

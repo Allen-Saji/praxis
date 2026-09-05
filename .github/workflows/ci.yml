@@ -93,7 +93,7 @@ jobs:
       - run: pnpm build
 
   move:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -106,13 +106,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/bin/sui
-            ~/.cargo/git
-            ~/.cargo/registry
-          key: sui-testnet-1.65.1-${{ runner.os }}
+          path: ${{ runner.temp }}/praxis-sui
+          key: sui-testnet-1.65.1-75515e79e182-e4224171-${{ runner.os }}-${{ runner.arch }}
       - name: Install pinned Sui CLI
-        run: command -v sui >/dev/null || cargo install --locked --git https://github.com/MystenLabs/sui.git --rev 75515e79e182c37b135a9984c6c1f08a2c383736 sui
+        run: |
+          bash scripts/install-sui-ci.sh "$RUNNER_TEMP/praxis-sui"
+          echo "$RUNNER_TEMP/praxis-sui" >> "$GITHUB_PATH"
       - run: pnpm move:test
 
   dependency-audit:

@@ -109,6 +109,12 @@ pnpm --filter @allen-saji/praxis-web dev
 pnpm move:test
 ```
 
+The root `pnpm lint` command builds workspace declarations before checking the
+web app, so it also works on a clean checkout. CI uses the official Sui Testnet
+`1.65.1` Linux x86_64 binary, verifies the release archive's SHA-256, and checks
+the CLI version on both fresh installs and cache hits. It does not compile Sui
+with the runner's changing Rust toolchain.
+
 Deploy the Move package and record the ids:
 
 ```bash
