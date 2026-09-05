@@ -115,6 +115,10 @@ web app, so it also works on a clean checkout. CI uses the official Sui Testnet
 the CLI version on both fresh installs and cache hits. It does not compile Sui
 with the runner's changing Rust toolchain.
 
+For the web control plane, follow the [hosted deployment guide](docs/hosted-deployment.md)
+for production origin configuration, migrations, restricted database access,
+and sign-in verification.
+
 Deploy the Move package and record the ids:
 
 ```bash
