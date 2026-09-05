@@ -12,7 +12,7 @@ export function SiteNav() {
           className="flex min-h-11 items-center rounded-[var(--r-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           aria-label="Praxis home"
         >
-          <Wordmark className="text-[20px]" />
+          <Wordmark className="text-[20px]" compactOnMobile />
         </Link>
         <nav className="flex items-center gap-1 text-[14px]" aria-label="Primary">
           <Link

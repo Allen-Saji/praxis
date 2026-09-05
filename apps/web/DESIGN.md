@@ -820,3 +820,20 @@ foreground element animates on a money figure mid-read.
 Component inventory, data sources (section 9), real-data-or-empty, risk color
 semantics and contrast rules (section 5), mono-for-truth, table density numbers
 (section 6), accessibility. The redesign is a surface, not a re-architecture.
+
+## 16. Praxis Guard launch identity
+
+The product name remains Praxis; its X profile is `@PraxisGuard`. The gate-shaped
+cyan P is the shared brand mark in navigation, favicon, Apple touch icon, and
+social previews. Raster marks have an opaque charcoal background so browser and
+profile surfaces cannot introduce white halos. The compact mobile navigation
+uses the mark alone; desktop includes the existing wordmark and cyan `i`.
+
+The launch headline is "Your agents act. You set the limits." Use solid text
+colors and a restrained primary button instead of gradient type or a glowing
+wordmark. Charcoal, cyan, typography, and the separate risk colors remain in
+place. The description identifies agent spending controls and the Sui Testnet
+preview. Social previews are 1200 x 630 pixels with descriptive alt text.
+
+Shared metadata and the public X link live in `lib/brand.ts`. The social site
+account is Praxis Guard; Allen remains the author and creator attribution.

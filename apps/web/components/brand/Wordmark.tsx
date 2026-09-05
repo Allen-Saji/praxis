@@ -1,37 +1,32 @@
+import Image from "next/image";
+import mark from "@/app/icon.png";
 import { cn } from "@/lib/cn";
 
-/**
- * The Praxis text wordmark: Space Grotesk with a glowing cyan "i" tying it to the
- * brand accent. Replaces the old shield icon. Size is controlled by the caller
- * via className (font-size); weight and tracking are baked in.
- *
- * `monogram` renders a compact "P." (cyan glow dot) for the collapsed mobile nav
- * rail where the full wordmark would not fit.
- */
+/** Shared opaque gate mark and wordmark for marketing and workspace navigation. */
 export function Wordmark({
   className,
   monogram = false,
+  compactOnMobile = false,
 }: {
   className?: string;
   monogram?: boolean;
+  compactOnMobile?: boolean;
 }) {
-  const accent = "text-[var(--accent)] [text-shadow:0_0_12px_rgba(0,210,255,0.65)]";
   return (
     <span
+      role="img"
+      aria-label="Praxis"
       style={{ fontFamily: "var(--font-space-grotesk)" }}
       className={cn(
-        "font-semibold tracking-[-0.01em] text-[var(--text-hi)] select-none",
+        "inline-flex shrink-0 items-center gap-1.5 font-semibold tracking-[-0.01em] text-[var(--text-hi)] select-none",
         className,
       )}
     >
-      {monogram ? (
-        <>
-          P<span className={accent}>.</span>
-        </>
-      ) : (
-        <>
-          Prax<span className={accent}>i</span>s
-        </>
+      <Image src={mark} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-[var(--r-sm)]" />
+      {!monogram && (
+        <span className={compactOnMobile ? "hidden sm:inline" : undefined}>
+          Prax<span className="text-[var(--accent)]">i</span>s
+        </span>
       )}
     </span>
   );

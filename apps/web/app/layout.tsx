@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { RouteHistory } from "@/components/navigation/RouteHistory";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL, SOCIAL_HANDLE } from "@/lib/brand";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -19,21 +20,14 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-// Production origin. Drives absolute URLs for OG/Twitter images and canonical.
-// Update if the deployed domain differs.
-const SITE_URL = "https://praxis.allensaji.dev";
-
-const TITLE = "Praxis - a safety layer between your AI agent and its wallet";
-const DESCRIPTION =
-  "Praxis simulates and risk-scores every spend before it signs, and writes the reasoning to a verifiable on-chain audit trail. Testnet, Sui only in v1.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: TITLE,
-  description: DESCRIPTION,
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   applicationName: "Praxis",
   keywords: [
     "Praxis",
+    "Praxis Guard",
     "Sui",
     "AI agents",
     "agent wallet security",
@@ -52,16 +46,15 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
     siteName: "Praxis",
-    title: TITLE,
-    description:
-      "Simulate and risk-score every spend before it signs. Write the reasoning to a verifiable on-chain audit trail.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: TITLE,
-    description:
-      "Simulate and risk-score every spend before it signs. Write the reasoning to a verifiable on-chain audit trail.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    site: SOCIAL_HANDLE,
     creator: "@SajiBhai011",
   },
 };
