@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, gte, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "../schema";
 import { appendAuditEvent } from "./audit";
@@ -142,10 +142,14 @@ export class WorkspaceRepository {
     return row ?? null;
   }
 
-  async workspaceOverview(organizationId: string, userId: string) {
+  async workspaceOverview(organizationId: string, userId: string, now = new Date()) {
     const membership = await this.organizationForMember(organizationId, userId);
     if (!membership) return null;
-    const [wallets, agents, assignments, scopes, policyVersions, credentials, decisions, walletCounters, assignmentCounters] = await Promise.all([
+    const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const currentWalletWindow = or(and(eq(schema.walletBudgetCounters.periodKind, "day"), eq(schema.walletBudgetCounters.periodStart, day)), and(eq(schema.walletBudgetCounters.periodKind, "month"), eq(schema.walletBudgetCounters.periodStart, month)));
+    const currentAssignmentWindow = or(and(eq(schema.assignmentBudgetCounters.periodKind, "day"), eq(schema.assignmentBudgetCounters.periodStart, day)), and(eq(schema.assignmentBudgetCounters.periodKind, "month"), eq(schema.assignmentBudgetCounters.periodStart, month)));
+    const [wallets, agents, assignments, scopes, policyVersions, credentials, decisions, walletCounters, assignmentCounters, totals] = await Promise.all([
       this.db.select().from(schema.wallets).where(and(eq(schema.wallets.organizationId, organizationId), isNull(schema.wallets.archivedAt))).orderBy(desc(schema.wallets.createdAt)),
       this.db.select().from(schema.agents).where(eq(schema.agents.organizationId, organizationId)).orderBy(desc(schema.agents.createdAt)),
       this.db.select().from(schema.assignments).where(eq(schema.assignments.organizationId, organizationId)).orderBy(desc(schema.assignments.createdAt)),
@@ -153,20 +157,26 @@ export class WorkspaceRepository {
       this.db.select({ version: schema.policyVersions, scope: schema.policyScopes }).from(schema.policyVersions).innerJoin(schema.policyScopes, eq(schema.policyScopes.id, schema.policyVersions.scopeId)).where(eq(schema.policyScopes.organizationId, organizationId)).orderBy(desc(schema.policyVersions.version)),
       this.db.select().from(schema.agentCredentials).where(eq(schema.agentCredentials.organizationId, organizationId)).orderBy(desc(schema.agentCredentials.createdAt)),
       this.db.select().from(schema.spendIntents).where(eq(schema.spendIntents.organizationId, organizationId)).orderBy(desc(schema.spendIntents.createdAt), desc(schema.spendIntents.id)).limit(50),
-      this.db.select({ counter: schema.walletBudgetCounters, wallet: schema.wallets }).from(schema.walletBudgetCounters).innerJoin(schema.wallets, eq(schema.wallets.id, schema.walletBudgetCounters.walletId)).where(eq(schema.wallets.organizationId, organizationId)),
-      this.db.select({ counter: schema.assignmentBudgetCounters, assignment: schema.assignments }).from(schema.assignmentBudgetCounters).innerJoin(schema.assignments, eq(schema.assignments.id, schema.assignmentBudgetCounters.assignmentId)).where(eq(schema.assignments.organizationId, organizationId)),
+      this.db.select({ counter: schema.walletBudgetCounters, wallet: schema.wallets }).from(schema.walletBudgetCounters).innerJoin(schema.wallets, eq(schema.wallets.id, schema.walletBudgetCounters.walletId)).where(and(eq(schema.wallets.organizationId, organizationId), currentWalletWindow)),
+      this.db.select({ counter: schema.assignmentBudgetCounters, assignment: schema.assignments }).from(schema.assignmentBudgetCounters).innerJoin(schema.assignments, eq(schema.assignments.id, schema.assignmentBudgetCounters.assignmentId)).where(and(eq(schema.assignments.organizationId, organizationId), currentAssignmentWindow)),
+      this.db.select({
+        spentToday: sql<string>`coalesce(sum(${schema.spendIntents.amountMist}) filter (where ${schema.spendIntents.state} = 'confirmed' and ${schema.spendIntents.confirmedAt} >= ${day.toISOString()} and ${schema.spendIntents.confirmedAt} < ${new Date(day.getTime() + 86_400_000).toISOString()}), 0)::text`,
+        blockedToday: sql<number>`count(*) filter (where ${schema.spendIntents.state}::text like '%blocked' and coalesce(${schema.spendIntents.completedAt}, ${schema.spendIntents.updatedAt}) >= ${day.toISOString()} and coalesce(${schema.spendIntents.completedAt}, ${schema.spendIntents.updatedAt}) < ${new Date(day.getTime() + 86_400_000).toISOString()})::int`,
+        uncertain: sql<number>`count(*) filter (where ${schema.spendIntents.state} = 'submission_unknown')::int`,
+        pending: sql<number>`count(*) filter (where ${schema.spendIntents.state} in ('evidence_pending', 'abort_record_pending'))::int`,
+      }).from(schema.spendIntents).where(eq(schema.spendIntents.organizationId, organizationId)),
     ]);
-    return { ...membership, wallets, agents, assignments, scopes, policyVersions, credentials, decisions, walletCounters, assignmentCounters };
+    return { ...membership, wallets, agents, assignments, scopes, policyVersions, credentials, decisions, walletCounters, assignmentCounters, totals: totals[0]!, day, month };
   }
 
-  async decisionsForMember(input: { organizationId: string; userId: string; limit?: number; before?: { createdAt: Date; id: string } }) {
+  async decisionsForMember(input: { organizationId: string; userId: string; limit?: number; attention?: boolean; agentId?: string; state?: typeof schema.spendIntents.$inferSelect.state; since?: Date; before?: { createdAt: Date; id: string } }) {
     const membership = await this.organizationForMember(input.organizationId, input.userId);
     if (!membership) return null;
     const limit = Math.min(Math.max(input.limit ?? 25, 1), 50);
     const before = input.before
       ? or(lt(schema.spendIntents.createdAt, input.before.createdAt), and(eq(schema.spendIntents.createdAt, input.before.createdAt), lt(schema.spendIntents.id, input.before.id)))
       : undefined;
-    const decisions = await this.db.select().from(schema.spendIntents).where(and(eq(schema.spendIntents.organizationId, input.organizationId), before)).orderBy(desc(schema.spendIntents.createdAt), desc(schema.spendIntents.id)).limit(limit + 1);
+    const decisions = await this.db.select().from(schema.spendIntents).where(and(eq(schema.spendIntents.organizationId, input.organizationId), before, input.agentId ? eq(schema.spendIntents.agentId, input.agentId) : undefined, input.state ? eq(schema.spendIntents.state, input.state) : undefined, input.since ? gte(schema.spendIntents.createdAt, input.since) : undefined, input.attention ? inArray(schema.spendIntents.state, ["evidence_pending", "abort_record_pending"]) : undefined)).orderBy(desc(schema.spendIntents.createdAt), desc(schema.spendIntents.id)).limit(limit + 1);
     return { ...membership, decisions: decisions.slice(0, limit), hasMore: decisions.length > limit };
   }
 
