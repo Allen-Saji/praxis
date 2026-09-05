@@ -1,22 +1,15 @@
-import { NextResponse } from "next/server";
+import { requireOrganizationMember, safeErrorResponse, workspaceRepository, HttpError } from "@/lib/control-plane.server";
 import { getReasoning } from "@/lib/praxis.server";
-import { enforceRateLimit } from "@/lib/rate-limit";
-
 export const dynamic = "force-dynamic";
-
-/** Fetch a reasoning blob (sealed marker or public plaintext). Walrus blobs are
- *  immutable, so the response is cacheable by blobId. */
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, { bucket: "reasoning" });
-  if (limited) return limited;
-
-  const { searchParams } = new URL(request.url);
-  const blobId = searchParams.get("blobId");
-  if (!blobId) {
-    return NextResponse.json({ error: "blobId is required" }, { status: 400 });
-  }
-  const result = await getReasoning(blobId);
-  return NextResponse.json(result, {
-    headers: { "Cache-Control": "public, max-age=31536000, immutable" },
-  });
+  try {
+    const query = new URL(request.url).searchParams;
+    const orgId = query.get("organizationId") ?? "";
+    const intentId = query.get("intentId") ?? "";
+    if (![orgId, intentId].every((id) => /^[0-9a-f-]{36}$/i.test(id))) throw new HttpError(404, "NOT_FOUND", "Evidence not found");
+    const { session } = await requireOrganizationMember(request, orgId);
+    const result = await workspaceRepository().decisionForMember(orgId, session.user.id, intentId);
+    if (!result?.decision.evidenceBlobId) throw new HttpError(404, "NOT_FOUND", "Evidence not found");
+    return Response.json(await getReasoning(result.decision.evidenceBlobId), { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) { return safeErrorResponse(error, "EVIDENCE_UNAVAILABLE", 503); }
 }

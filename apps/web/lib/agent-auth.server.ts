@@ -12,7 +12,7 @@ export async function authorizeAgentRequest(request: Request) {
     const { prefix } = parseAgentCredential(token);
     const repository = authRepository();
     const authorized = await repository.authorizeAgent({ tokenPrefix: prefix, tokenHash: tokenDigest(token, requiredSecret("PRAXIS_CREDENTIAL_PEPPER")), requestsPerMinute: Number(process.env.PRAXIS_AGENT_RATE_LIMIT ?? "60") });
-    void repository.touchCredential(authorized.credential.id, authorized.now).catch(() => undefined);
+    await repository.touchCredential(authorized.credential.id, authorized.now).catch(() => undefined);
     return authorized;
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "RATE_LIMITED") throw new HttpError(429, "RATE_LIMITED", "Too many requests for this credential");

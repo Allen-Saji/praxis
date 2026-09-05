@@ -142,7 +142,7 @@ export function safeErrorResponse(error: unknown, fallbackCode: string, fallback
       message: known?.message ?? "Request could not be completed",
       requestId,
     },
-  }, { status: known?.status ?? fallbackStatus });
+  }, { status: known?.status ?? fallbackStatus, headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function readJsonBody<T>(request: Request, parse: (value: unknown) => T): Promise<T> {

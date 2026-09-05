@@ -1,14 +1,11 @@
-import { LockKeyhole, ServerCog, Wallet } from "lucide-react";
-import { requireWorkspaceOverview } from "@/lib/workspace-view.server";
-import { LogoutButton } from "@/components/workspace/WorkspaceControls";
+import Link from "next/link";
+import { requireWorkspace } from "@/lib/workspace-view.server";
 import { Panel, WorkspaceFrame } from "@/components/workspace/WorkspaceFrame";
-
 export const dynamic = "force-dynamic";
-export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params; const data = await requireWorkspaceOverview(slug);
-  return <WorkspaceFrame slug={slug} name={data.organization.name} eyebrow="Workspace settings" title="Security boundary" description="Phase 1 configuration is deliberately narrow: one Testnet execution wallet, owner-authenticated mutations, and append-only operational history.">
-    <div className="grid gap-5 lg:grid-cols-3"><Panel title="Owner session"><IconText icon={Wallet} title="Signed owner" text={data.session.user.primarySuiAddress} /><div className="mt-4"><LogoutButton /></div></Panel><Panel title="Network"><IconText icon={ServerCog} title="Sui Testnet" text="Mainnet cannot be selected or activated in Phase 1." /></Panel><Panel title="Custody"><IconText icon={LockKeyhole} title="Demo keypair adapter" text="Production isolated custody and multi-wallet Move authorization remain explicit Phase 2 gates." /></Panel></div>
-    <Panel title="Lifecycle controls" detail="Destructive removal is intentionally unavailable."><p className="text-[13px] leading-6 text-[var(--text-mid)]">Use precise suspend, disable, archive, and revoke actions on the relevant wallet, agent, assignment, or credential. Decisions, evidence references, counters, policy hashes, and audit events remain retained for review.</p></Panel>
+export default async function Settings({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params; const data = await requireWorkspace(slug);
+  return <WorkspaceFrame slug={slug} name={data.organization.name} title="Settings" description="Workspace and account information.">
+    <Panel title="Workspace"><dl className="grid gap-4 text-sm"><div><dt className="text-[var(--text-low)]">Name</dt><dd className="mt-1">{data.organization.name}</dd></div><div><dt className="text-[var(--text-low)]">Your role</dt><dd className="mt-1">{data.member.role}</dd></div></dl><div className="mt-5 flex flex-wrap gap-4"><Link className="focus-ring inline-flex min-h-11 items-center text-sm text-[var(--accent)]" href="/app/workspaces">Manage workspaces</Link><Link className="focus-ring inline-flex min-h-11 items-center text-sm text-[var(--accent)]" href="/app/workspaces/new">New workspace</Link></div></Panel>
+    <Panel title="Privacy and network"><p className="text-sm leading-7 text-[var(--text-mid)]">Your workspace is accessible only to its members. Sui transactions and published Walrus evidence are public. Hosted payments currently support Sui Testnet and the configured execution wallet.</p></Panel>
   </WorkspaceFrame>;
 }
-function IconText({ icon: Icon, title, text }: { icon: typeof Wallet; title: string; text: string }) { return <div><Icon className="h-5 w-5 text-[var(--accent)]" /><p className="mt-4 text-[13px] font-semibold">{title}</p><p className="mt-2 break-all font-mono text-[11px] leading-5 text-[var(--text-low)]">{text}</p></div>; }

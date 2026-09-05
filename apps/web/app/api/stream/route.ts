@@ -1,27 +1,3 @@
-import { NextResponse } from "next/server";
-import { getStream } from "@/lib/praxis.server";
-import { enforceRateLimit } from "@/lib/rate-limit";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-/**
- * Unified spend stream: confirmed and aborted spends interleaved by time, newest
- * first. Polled by SWR on a 5s interval (DESIGN.md Q2). Backed by
- * PraxisReader.stream().
- */
-export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, { bucket: "stream" });
-  if (limited) return limited;
-
-  const { searchParams } = new URL(request.url);
-  const limitParam = Number(searchParams.get("limit"));
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 200) : 50;
-  try {
-    const entries = await getStream(limit);
-    return NextResponse.json({ entries });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to read the spend stream.";
-    return NextResponse.json({ error: message }, { status: 502 });
-  }
-}
+// Public explorer endpoints are retired. Personal data uses workspace routes.
+export async function GET() { return Response.json({ error: "This endpoint is no longer available" }, { status: 410, headers: { "Cache-Control": "no-store" } }); }
+export const POST = GET;

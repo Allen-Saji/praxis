@@ -56,3 +56,17 @@ Run these integration tests only against a disposable local or CI database.
 
 References: [PostgreSQL policies](https://www.postgresql.org/docs/current/sql-createpolicy.html)
 and [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+
+## Personal application routes
+
+`/app` and `/app/agents` resolve to an authorized workspace. Public address and
+receipt lookups under `/app/agents/[addr]` and `/app/spend/[id]` are retired.
+The old `/api/stats`, `/api/stream` and `/api/decrypt` endpoints return 410.
+Personal evidence requests use `/api/reasoning?organizationId=...&intentId=...`:
+the server checks membership and resolves the blob from the owned intent,
+ignoring caller-supplied blob IDs. Responses are private and not cached.
+The standalone SDK's public Sui/Walrus reads remain available.
+
+No database migration is required for this UI and query update. Rebuild the
+workspace packages before deploying the application.

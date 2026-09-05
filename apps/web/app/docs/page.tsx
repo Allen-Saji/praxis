@@ -29,6 +29,20 @@ export default function DocsPage() {
     <div className="flex min-h-screen flex-col">
       <SiteNav />
       <main className="mx-auto w-full max-w-[1080px] flex-1 px-5 py-10">
+        <section id="hosted-agents" className="mx-auto mb-10 max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6">
+          <h2 className="text-2xl font-semibold">Connect an agent to your workspace</h2>
+          <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[var(--text-mid)]">
+            <li>Open Praxis, sign in with a Sui wallet, and create your workspace.</li>
+            <li>Add an eligible execution wallet and review its spending limits.</li>
+            <li>Add an agent, grant wallet access, activate its limits and enable access.</li>
+            <li>Issue an assignment credential. Store it locally as PRAXIS_TOKEN; it is shown only once.</li>
+            <li>Call GET /api/v1/agent with Authorization: Bearer PRAXIS_TOKEN to check access without a payment.</li>
+          </ol>
+          <p className="mt-4 text-sm leading-7 text-[var(--text-mid)]">Payment requests use POST /api/v1/spend-intents. Requests are authorized by the credential's wallet assignment. Claude Code and Codex can call the HTTP API through a local tool or script; a native MCP connector is not included.</p>
+          <p className="mt-3 text-sm leading-7 text-[var(--text-mid)]">Hosted execution is limited to the configured Sui Testnet wallet, and published reasoning is public. Connecting a sign-in wallet does not grant it execution support.</p>
+          <a className="focus-ring mt-4 inline-flex min-h-11 items-center text-sm text-[var(--accent)]" href="/app">Open app</a>
+        </section>
+
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[180px_1fr]">
           {/* On this page */}
           <nav aria-label="On this page" className="hidden lg:block">

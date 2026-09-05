@@ -18,13 +18,8 @@ export default function AppError({
       </span>
       <h1 className="text-[20px] font-semibold text-[var(--text-hi)]">Could not load this view</h1>
       <p className="text-[14px] leading-[20px] text-[var(--text-mid)]">
-        A read from Sui RPC or Walrus failed. The chain data is unchanged; retry the read.
+        This page is temporarily unavailable. Please try again.
       </p>
-      {error.message ? (
-        <p className="max-w-full truncate font-mono text-[12px] text-[var(--text-low)]">
-          {error.message}
-        </p>
-      ) : null}
       <Button variant="secondary" size="sm" onClick={reset}>
         Retry
       </Button>

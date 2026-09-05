@@ -7,9 +7,11 @@ authenticate with scoped credentials and never receive the signing key. Every
 intent is checked against versioned per-transaction, daily, and monthly policy,
 reserved transactionally in PostgreSQL, simulated, and written to verified
 Walrus evidence before an allowed transfer can be signed. Confirmed and blocked
-outcomes are visible in the public audit dashboard and the owner workspace.
+outcomes are visible only to authorized members in the personal workspace UI.
+Sui transactions and published Walrus evidence remain public.
 
-Built for Sui Overflow 2026 (Walrus track). Testnet, SUI-denominated spends in v1.
+[Fourth place, Sui Overflow 2026 Walrus track](https://www.sui.io/blog/sui-overflow-2026-winners).
+Hosted execution supports Testnet SUI payments.
 
 ## The three-party model
 
@@ -35,10 +37,28 @@ packages/sdk          @allen-saji/praxis: transport-neutral Sui/Walrus services,
 packages/control-plane Pure policy, money, state-machine, and auth domain logic
 packages/db           PostgreSQL schema, migrations, locks, repositories, audit
 apps/agents           Sample agents: researcher, trader, attacker
-apps/web              Public audit dashboard plus authenticated owner workspace
+apps/web              Personal dashboards, agents, wallets, limits and activity
 scripts               Reconciliation, deterministic seed, guarded live smoke
 deployments           Recorded testnet package + object ids
 ```
+
+## Connect a hosted agent
+
+Sign in at `/app`, create a workspace, add an eligible wallet, and activate its
+spending limits. Add an agent, review and activate its wallet access policy,
+enable access, then issue an assignment credential. Store it locally as
+`PRAXIS_TOKEN` and check access without a payment:
+
+```bash
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer $PRAXIS_TOKEN" \
+  https://praxis.allensaji.dev/api/v1/agent
+```
+
+The response identifies the authorized agent, assignment and wallet. Revoked or
+invalid credentials are rejected. Claude Code and Codex can use this HTTP API
+through a local script or tool; a native MCP connector is not included.
+Connecting a sign-in wallet does not make it eligible for hosted execution.
 
 ## How a spend works
 
