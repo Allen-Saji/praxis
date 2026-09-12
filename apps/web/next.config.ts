@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@mysten/walrus"],
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    staleTimes: {
+      dynamic: 15,
+    },
   },
 };
 

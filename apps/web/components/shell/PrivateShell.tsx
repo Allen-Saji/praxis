@@ -7,6 +7,7 @@ import { ConnectButton, useCurrentAccount, useDisconnectWallet } from "@mysten/d
 import { Bot, LayoutDashboard, WalletCards, List, Settings, ChevronDown } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Wordmark } from "@/components/brand/Wordmark";
+import { SESSION_REVALIDATION_INTERVAL_MS, verifiedAddressAfterCheck, verifiedAddressBeforeRevalidation } from "@/lib/session-verification";
 import { shortAddress } from "@/lib/workspace-display";
 import { OwnerSignIn } from "@/components/workspace/WorkspaceControls";
 
@@ -16,12 +17,13 @@ export function PrivateShell({ address, workspaces, children }: { address: strin
   const account = useCurrentAccount();
   const disconnect = useDisconnectWallet();
   const queryClient = useQueryClient();
-  const [verified, setVerified] = useState(false);
+  const [verifiedAddress, setVerifiedAddress] = useState<string | null>(address);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
   const previousWallet = useRef<string | null>(null);
+  const verified = !!address && verifiedAddress === address;
   const mismatch = !!address && !!account && account.address.toLowerCase() !== address.toLowerCase();
   const active = workspaces.find((workspace) => pathname.startsWith(`/app/workspaces/${workspace.slug}/`) || pathname === `/app/workspaces/${workspace.slug}`);
   const base = active ? `/app/workspaces/${active.slug}` : "/app";
@@ -34,37 +36,51 @@ export function PrivateShell({ address, workspaces, children }: { address: strin
   ];
 
   useEffect(() => {
-    if (!address) { setVerified(false); return; }
+    if (!address) { setVerifiedAddress(null); return; }
+    const expectedAddress = address;
     const controller = new AbortController();
     let mounted = true;
-    setVerified(false);
+    let inFlight = false;
     async function verify() {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const response = await fetch("/api/auth/session", { cache: "no-store", signal: controller.signal });
         if (!response.ok) throw new Error("Unable to check your session. Retry to continue.");
         const result = await response.json();
         if (!mounted) return;
-        if (!result.authenticated || result.user?.address !== address) {
-          setVerified(false); queryClient.clear();
+        if (!result.authenticated || result.user?.address !== expectedAddress) {
+          setVerifiedAddress((current) => verifiedAddressAfterCheck(current, expectedAddress, "invalid")); queryClient.clear();
           window.location.replace("/app/workspaces"); return;
         }
-        setVerified(true); setError(null);
+        setVerifiedAddress((current) => verifiedAddressAfterCheck(current, expectedAddress, "valid")); setError(null);
       } catch (failure) {
         if (!mounted || controller.signal.aborted) return;
-        setVerified(false); setError(failure instanceof Error ? failure.message : "Session unavailable");
+        setVerifiedAddress((current) => verifiedAddressAfterCheck(current, expectedAddress, "unavailable"));
+        setError(failure instanceof Error ? failure.message : "Session unavailable");
+      } finally {
+        inFlight = false;
       }
     }
-    const onVisibility = () => { if (document.visibilityState === "visible") { setVerified(false); void verify(); } };
-    const onPageShow = () => { setVerified(false); void verify(); };
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      setVerifiedAddress((current) => verifiedAddressBeforeRevalidation(current, true));
+      void verify();
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      setVerifiedAddress((current) => verifiedAddressBeforeRevalidation(current, true));
+      void verify();
+    };
     void verify();
-    const timer = window.setInterval(() => { void verify(); }, 15_000);
+    const timer = window.setInterval(() => { void verify(); }, SESSION_REVALIDATION_INTERVAL_MS);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", onPageShow);
     return () => { mounted = false; controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); window.removeEventListener("pageshow", onPageShow); };
-  }, [address, pathname, attempt, queryClient]);
+  }, [address, attempt, queryClient]);
 
   async function signOut() {
-    setPending(true); setError(null); setVerified(false);
+    setPending(true); setError(null); setVerifiedAddress(null);
     try {
       const response = await fetch("/api/auth/logout", { method: "POST" });
       if (!response.ok) throw new Error("Sign out failed. Please retry.");
