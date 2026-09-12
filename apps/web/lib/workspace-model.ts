@@ -1,6 +1,8 @@
 import type { WorkspaceRepository } from "@allen-saji/praxis-db";
 export type Overview = NonNullable<Awaited<ReturnType<WorkspaceRepository["workspaceOverview"]>>>;
-export function agentReadiness(data: Overview, agentId: string, now = new Date()) {
+type AgentReadinessData = Pick<Overview, "agents" | "assignments" | "wallets" | "scopes" | "policyVersions" | "credentials">;
+type WalletBudgetData = Pick<Overview, "scopes" | "policyVersions" | "walletCounters">;
+export function agentReadiness(data: AgentReadinessData, agentId: string, now = new Date()) {
   const agent = data.agents.find((item) => item.id === agentId);
   if (!agent || agent.status !== "active") return { label: agent?.status === "archived" ? "Archived" : "Paused", detail: "Agent access is disabled" };
   const assignments = data.assignments.filter((item) => item.agentId === agentId && item.status !== "archived");
@@ -14,7 +16,7 @@ export function agentReadiness(data: Overview, agentId: string, now = new Date()
   }
   return { label: "Setup needed", detail: "Review wallet access, limits and credentials" };
 }
-export function walletBudget(data: Overview, walletId: string, period: "day" | "month") {
+export function walletBudget(data: WalletBudgetData, walletId: string, period: "day" | "month") {
   const scope = data.scopes.find((item) => item.walletId === walletId);
   const policy = data.policyVersions.find(({ version }) => version.id === scope?.currentVersionId)?.version;
   const counter = data.walletCounters.find((item) => item.wallet.id === walletId && item.counter.periodKind === period)?.counter;

@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { requireWorkspaceOverview } from "@/lib/workspace-view.server";
+import { notFound } from "next/navigation";
+import { workspaceRepository } from "@/lib/control-plane.server";
+import { requireOwnerSession } from "@/lib/workspace-view.server";
 import { agentReadiness } from "@/lib/workspace-model";
 import { dateLabel, sui } from "@/lib/workspace-display";
 import { CreateAgentForm } from "@/components/workspace/WorkspaceControls";
 import { Empty, Panel, WorkspaceFrame } from "@/components/workspace/WorkspaceFrame";
 export const dynamic = "force-dynamic";
 export default async function Agents({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params; const data = await requireWorkspaceOverview(slug);
+  const { slug } = await params; const session = await requireOwnerSession(); const data = await workspaceRepository().agentListForMember(slug, session.user.id); if (!data) notFound();
   return <WorkspaceFrame slug={slug} name={data.organization.name} title="Agents" description="Only agents registered in this workspace.">
     <details open={!data.agents.length} className="max-w-xl rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5"><summary className="focus-ring cursor-pointer text-sm font-semibold">Add agent</summary><div className="mt-5"><CreateAgentForm organizationId={data.organization.id} /></div></details>
     <Panel title="Your agents">{data.agents.length ? <div className="grid gap-3">{data.agents.map((agent) => {

@@ -49,6 +49,10 @@ describe("WorkspaceRepository tenant boundaries", () => {
     expect(await repository.organizationBySlugForMember(firstOrganization.slug, second.userId)).toBeNull();
     expect((await repository.workspaceOverview(first.organizationId, first.userId))?.wallets.map((wallet) => wallet.id)).toContain(first.walletId);
     expect(await repository.workspaceOverview(first.organizationId, second.userId)).toBeNull();
+    expect((await repository.agentListForMember(firstOrganization.slug, first.userId))?.agents.map((agent) => agent.id)).toContain(first.agentId);
+    expect(await repository.agentListForMember(firstOrganization.slug, second.userId)).toBeNull();
+    expect((await repository.walletListForMember(firstOrganization.slug, first.userId))?.wallets.map((wallet) => wallet.id)).toContain(first.walletId);
+    expect(await repository.walletListForMember(firstOrganization.slug, second.userId)).toBeNull();
     expect((await repository.decisionsForMember({ organizationId: first.organizationId, userId: first.userId, limit: 1 }))?.decisions.length).toBe(0);
     expect(await repository.decisionsForMember({ organizationId: first.organizationId, userId: second.userId })).toBeNull();
     expect(await repository.decisionForMember(first.organizationId, second.userId, crypto.randomUUID())).toBeNull();

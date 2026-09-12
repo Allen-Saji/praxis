@@ -28,7 +28,10 @@ describe("personal dashboard queries", () => {
       expect(tomorrow?.totals.spentToday).toBe("0"); expect(tomorrow?.walletCounters).toHaveLength(1);
       const october = await repo.workspaceOverview(fixture.organizationId, fixture.userId, new Date("2026-10-01T00:00:00Z")); expect(october?.walletCounters).toHaveLength(0);
       expect(await repo.workspaceOverview(fixture.organizationId, other.userId, now)).toBeNull();
-      expect((await repo.decisionsForMember({ organizationId: fixture.organizationId, userId: fixture.userId, agentId: quiet!.id }))?.decisions).toHaveLength(0);
+      const quietActivity = await repo.decisionsForMember({ organizationId: fixture.organizationId, userId: fixture.userId, agentId: quiet!.id, includeAgentOptions: true });
+      expect(quietActivity?.decisions).toHaveLength(0); expect(quietActivity?.agents.some((agent) => agent.id === quiet!.id)).toBe(true); expect(quietActivity?.invalidAgent).toBe(false);
+      const invalidAgent = await repo.decisionsForMember({ organizationId: fixture.organizationId, userId: fixture.userId, agentId: crypto.randomUUID(), includeAgentOptions: true });
+      expect(invalidAgent?.decisions).toHaveLength(0); expect(invalidAgent?.invalidAgent).toBe(true);
       expect((await repo.decisionsForMember({ organizationId: fixture.organizationId, userId: fixture.userId, state: "submission_unknown" }))?.decisions).toHaveLength(1);
       expect((await repo.decisionsForMember({ organizationId: other.organizationId, userId: other.userId }))?.decisions).toHaveLength(0);
     } finally { await client.end(); }

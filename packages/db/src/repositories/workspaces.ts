@@ -169,15 +169,52 @@ export class WorkspaceRepository {
     return { ...membership, wallets, agents, assignments, scopes, policyVersions, credentials, decisions, walletCounters, assignmentCounters, totals: totals[0]!, day, month };
   }
 
-  async decisionsForMember(input: { organizationId: string; userId: string; limit?: number; attention?: boolean; agentId?: string; state?: typeof schema.spendIntents.$inferSelect.state; since?: Date; before?: { createdAt: Date; id: string } }) {
+  async agentListForMember(slug: string, userId: string) {
+    const membership = await this.organizationBySlugForMember(slug, userId);
+    if (!membership) return null;
+    const organizationId = membership.organization.id;
+    const [wallets, agents, assignments, scopes, policyVersions, credentials] = await Promise.all([
+      this.db.select().from(schema.wallets).where(and(eq(schema.wallets.organizationId, organizationId), isNull(schema.wallets.archivedAt))).orderBy(desc(schema.wallets.createdAt)),
+      this.db.select().from(schema.agents).where(eq(schema.agents.organizationId, organizationId)).orderBy(desc(schema.agents.createdAt)),
+      this.db.select().from(schema.assignments).where(eq(schema.assignments.organizationId, organizationId)).orderBy(desc(schema.assignments.createdAt)),
+      this.db.select().from(schema.policyScopes).where(eq(schema.policyScopes.organizationId, organizationId)),
+      this.db.select({ version: schema.policyVersions, scope: schema.policyScopes }).from(schema.policyVersions).innerJoin(schema.policyScopes, eq(schema.policyScopes.id, schema.policyVersions.scopeId)).where(eq(schema.policyScopes.organizationId, organizationId)).orderBy(desc(schema.policyVersions.version)),
+      this.db.select().from(schema.agentCredentials).where(eq(schema.agentCredentials.organizationId, organizationId)).orderBy(desc(schema.agentCredentials.createdAt)),
+    ]);
+    return { ...membership, wallets, agents, assignments, scopes, policyVersions, credentials };
+  }
+
+  async walletListForMember(slug: string, userId: string, now = new Date()) {
+    const membership = await this.organizationBySlugForMember(slug, userId);
+    if (!membership) return null;
+    const organizationId = membership.organization.id;
+    const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const currentWalletWindow = or(and(eq(schema.walletBudgetCounters.periodKind, "day"), eq(schema.walletBudgetCounters.periodStart, day)), and(eq(schema.walletBudgetCounters.periodKind, "month"), eq(schema.walletBudgetCounters.periodStart, month)));
+    const [wallets, scopes, policyVersions, walletCounters] = await Promise.all([
+      this.db.select().from(schema.wallets).where(and(eq(schema.wallets.organizationId, organizationId), isNull(schema.wallets.archivedAt))).orderBy(desc(schema.wallets.createdAt)),
+      this.db.select().from(schema.policyScopes).where(and(eq(schema.policyScopes.organizationId, organizationId), eq(schema.policyScopes.scopeType, "wallet"))),
+      this.db.select({ version: schema.policyVersions, scope: schema.policyScopes }).from(schema.policyVersions).innerJoin(schema.policyScopes, eq(schema.policyScopes.id, schema.policyVersions.scopeId)).where(and(eq(schema.policyScopes.organizationId, organizationId), eq(schema.policyScopes.scopeType, "wallet"))).orderBy(desc(schema.policyVersions.version)),
+      this.db.select({ counter: schema.walletBudgetCounters, wallet: schema.wallets }).from(schema.walletBudgetCounters).innerJoin(schema.wallets, eq(schema.wallets.id, schema.walletBudgetCounters.walletId)).where(and(eq(schema.wallets.organizationId, organizationId), currentWalletWindow)),
+    ]);
+    return { ...membership, wallets, scopes, policyVersions, walletCounters, day, month };
+  }
+
+  async decisionsForMember(input: { organizationId: string; userId: string; limit?: number; attention?: boolean; agentId?: string; includeAgentOptions?: boolean; state?: typeof schema.spendIntents.$inferSelect.state; since?: Date; before?: { createdAt: Date; id: string } }) {
     const membership = await this.organizationForMember(input.organizationId, input.userId);
     if (!membership) return null;
     const limit = Math.min(Math.max(input.limit ?? 25, 1), 50);
     const before = input.before
       ? or(lt(schema.spendIntents.createdAt, input.before.createdAt), and(eq(schema.spendIntents.createdAt, input.before.createdAt), lt(schema.spendIntents.id, input.before.id)))
       : undefined;
+    const agents = input.includeAgentOptions
+      ? await this.db.select().from(schema.agents).where(eq(schema.agents.organizationId, input.organizationId)).orderBy(desc(schema.agents.createdAt))
+      : undefined;
+    if (agents && input.agentId && !agents.some((agent) => agent.id === input.agentId)) {
+      return { ...membership, agents, decisions: [], hasMore: false, invalidAgent: true as const };
+    }
     const decisions = await this.db.select().from(schema.spendIntents).where(and(eq(schema.spendIntents.organizationId, input.organizationId), before, input.agentId ? eq(schema.spendIntents.agentId, input.agentId) : undefined, input.state ? eq(schema.spendIntents.state, input.state) : undefined, input.since ? gte(schema.spendIntents.createdAt, input.since) : undefined, input.attention ? inArray(schema.spendIntents.state, ["evidence_pending", "abort_record_pending"]) : undefined)).orderBy(desc(schema.spendIntents.createdAt), desc(schema.spendIntents.id)).limit(limit + 1);
-    return { ...membership, decisions: decisions.slice(0, limit), hasMore: decisions.length > limit };
+    return { ...membership, agents, decisions: decisions.slice(0, limit), hasMore: decisions.length > limit, invalidAgent: false as const };
   }
 
   async decisionForMember(organizationId: string, userId: string, intentId: string) {
