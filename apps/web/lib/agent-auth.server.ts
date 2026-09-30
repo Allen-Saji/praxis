@@ -15,7 +15,9 @@ export async function authorizeAgentRequest(request: Request) {
     await repository.touchCredential(authorized.credential.id, authorized.now).catch(() => undefined);
     return authorized;
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "RATE_LIMITED") throw new HttpError(429, "RATE_LIMITED", "Too many requests for this credential");
-    throw new HttpError(401, "AGENT_UNAUTHENTICATED", "Agent credential is invalid");
+    const code = error && typeof error === "object" && "code" in error ? error.code : null;
+    if (code === "RATE_LIMITED") throw new HttpError(429, "RATE_LIMITED", "Too many requests for this credential");
+    if (code === "INVALID_CREDENTIAL" || code === "AGENT_UNAUTHENTICATED") throw new HttpError(401, "AGENT_UNAUTHENTICATED", "Agent credential is invalid");
+    throw new HttpError(503, "AGENT_AUTH_UNAVAILABLE", "Agent authentication is temporarily unavailable. Retry when the service recovers.");
   }
 }

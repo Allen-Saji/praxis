@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const createChallenge = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/control-plane.server", () => ({
-  authRepository: vi.fn(),
+  authRepository: () => ({ createChallenge }),
+  HttpError: class extends Error { constructor(readonly status: number, readonly code: string, message: string) { super(message); } },
   configuredOrigin: (request: Request) => process.env.APP_ORIGIN ?? new URL(request.url).origin,
   readJsonBody: async (request: Request, parse: (value: unknown) => unknown) => parse(await request.json()),
   requireSameOrigin: (request: Request) => {
@@ -16,14 +19,21 @@ vi.mock("@/lib/control-plane.server", () => ({
 import { POST } from "./route";
 
 afterEach(() => {
-  delete process.env.APP_ORIGIN;
+  vi.unstubAllEnvs();
 });
+beforeEach(() => { vi.stubEnv("APP_ORIGIN", "http://localhost"); createChallenge.mockReset(); });
 
 async function jsonResponse(response: Response) {
   return response.json() as Promise<{ error?: { code?: string } }>;
 }
 
 describe("POST /api/auth/challenge", () => {
+  it("reports a service outage without blaming the wallet or exposing database details", async () => {
+    createChallenge.mockRejectedValue(new Error("private database connection details"));
+    const response = await POST(new Request("http://localhost/api/auth/challenge", { method: "POST", headers: { origin: "http://localhost", "content-type": "application/json" }, body: JSON.stringify({ address: "0x2", network: "testnet" }) }));
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("private database");
+  });
   it("rejects mainnet requests and unexpected fields", async () => {
     const mainnet = await POST(new Request("http://localhost/api/auth/challenge", {
       method: "POST",

@@ -3,7 +3,7 @@ import { createAgentCredential, tokenDigest } from "@allen-saji/praxis-control-p
 import { DEPLOYMENTS, makeSuiClient } from "@allen-saji/praxis";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
-import { policyRepository, readJsonBody, requireOrganizationMember, requireSameOrigin, requiredSecret, safeErrorResponse, workspaceRepository } from "./control-plane.server";
+import { HttpError, policyRepository, readJsonBody, requireOrganizationMember, requireSameOrigin, requiredSecret, safeErrorResponse, workspaceRepository } from "./control-plane.server";
 
 export async function ownerMutation<T>(request: Request, organizationId: string, action: (actorId: string) => Promise<T>): Promise<Response> {
   try {
@@ -30,15 +30,19 @@ export function safeCredential(credential: { id: string; assignmentId: string; n
 }
 
 export async function assertWalletEnablement(address: string): Promise<void> {
-  if ((process.env.PRAXIS_NETWORK ?? "testnet") !== "testnet") throw new Error("Hosted execution supports Testnet only");
+  if ((process.env.PRAXIS_NETWORK ?? "testnet") !== "testnet") throw new HttpError(503, "EXECUTION_UNAVAILABLE", "Hosted payments require the Testnet execution configuration.");
   const key = process.env.PRAXIS_OPERATOR_KEY;
-  if (!key) throw new Error("PRAXIS_OPERATOR_KEY is not configured");
+  if (!key) throw new HttpError(503, "EXECUTION_UNAVAILABLE", "Hosted payments are not configured. The operator must configure the Testnet signer first.");
   const expected = normalizeSuiAddress(address);
-  const signerAddress = normalizeSuiAddress(Ed25519Keypair.fromSecretKey(key).toSuiAddress());
-  if (expected !== signerAddress) throw new Error("Configured signer does not own this wallet");
-  const result = await makeSuiClient("testnet").getObject({ objectId: DEPLOYMENTS.testnet.agentCapId });
+  let signerAddress: string;
+  try { signerAddress = normalizeSuiAddress(Ed25519Keypair.fromSecretKey(key).toSuiAddress()); }
+  catch { throw new HttpError(503, "EXECUTION_UNAVAILABLE", "The hosted Testnet signer configuration is invalid."); }
+  if (expected !== signerAddress) throw new HttpError(403, "WALLET_NOT_SUPPORTED", "This wallet is not the configured Testnet execution wallet.");
+  let result: unknown;
+  try { result = await makeSuiClient("testnet").getObject({ objectId: DEPLOYMENTS.testnet.agentCapId }); }
+  catch { throw new HttpError(503, "ELIGIBILITY_UNAVAILABLE", "Wallet authority could not be checked. Please retry shortly."); }
   const owner = findAddressOwner(result);
-  if (!owner || normalizeSuiAddress(owner) !== signerAddress) throw new Error("Configured AgentCap is not owned by this wallet");
+  if (!owner || normalizeSuiAddress(owner) !== signerAddress) throw new HttpError(503, "EXECUTION_AUTHORITY_UNAVAILABLE", "The configured wallet does not hold the required Praxis execution authority.");
 }
 
 function findAddressOwner(value: unknown): string | null {
