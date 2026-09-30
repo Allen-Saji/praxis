@@ -70,3 +70,57 @@ The standalone SDK's public Sui/Walrus reads remain available.
 
 No database migration is required for this UI and query update. Rebuild the
 workspace packages before deploying the application.
+
+## Rehearsal preflight
+
+After building the packages, run `pnpm preflight:hosted` with these values in
+an environment file or secret environment:
+
+- `APP_ORIGIN`: the intended hosted origin, or localhost for an isolated test.
+- `PRAXIS_NETWORK=testnet`.
+- `PRAXIS_SHARED_AGENT_A_TOKEN` and `PRAXIS_SHARED_AGENT_B_TOKEN`: credentials
+  for different agents assigned to the same wallet.
+- `PRAXIS_PHASE1_WALLET_ADDRESS`: the expected execution wallet address.
+- `PRAXIS_SHARED_RECIPIENT`: the controlled Testnet recipient.
+- `PRAXIS_SHARED_AMOUNT_MIST`: the positive integer amount for each payment.
+
+Preflight calls the authenticated connection endpoint, the advisory simulation
+endpoint and public Testnet reads. It never requests execution, signs, resets
+budgets or publishes evidence. Authentication rate limits and last-used
+bookkeeping still apply. It verifies separate agents, shared wallet identity,
+the expected address, Testnet, AgentCap ownership, payment principal balance,
+matching previews, A's daily-limit scenario and shared budget headroom. The
+connection endpoint includes `walletAddress`; update an older deployment before
+using this check. Exit code 1 means a check failed or configuration is missing.
+
+A successful report is a snapshot, not execution approval or full acceptance.
+Gas and evidence storage need additional funding; live receipts, Walrus
+readback, replay and restart recovery still require the guarded smoke run.
+Execution rechecks current state even after preflight passes.
+
+## Database availability
+
+The application can deploy successfully while its database is offline. A
+signed-out session response does not query PostgreSQL and cannot establish
+that owner sign-in works. Check a real login challenge before a rehearsal.
+
+If Supabase reports the project is paused, restore the existing project and
+wait for restoration to complete before retrying sign-in. Preserve its data
+and runtime/RLS configuration. Do not reset the database or rotate credentials
+to address an availability failure. A new sign-in attempt must obtain a fresh
+challenge after recovery; old wallet approvals may have expired.
+
+Challenge creation and agent authentication return HTTP 503 when their service
+is unavailable. Invalid credentials still return 401, and rate limits return
+429. The API does not expose database connection details. A credential failure
+from an older deployment may mask an outage, so check database health before
+reissuing credentials. Free-project availability should be checked before the
+event; a paid plan is a separate operator decision.
+
+Hosted execution additionally needs `PRAXIS_NETWORK=testnet` and the existing
+`PRAXIS_OPERATOR_KEY` in the provider's encrypted Production secret store.
+That key grants signing authority for its wallet. Use only the intended funded
+Testnet demo signer and explicit operator approval; it is not production custody
+for customer funds. Redeploy after adding it. Wallet eligibility returns 503
+when this service configuration or its authority check is unavailable, and
+`eligible: false` for a different wallet.

@@ -207,6 +207,10 @@ publishes Walrus blobs, checks replay/conflict/block/budget/concurrency paths,
 and prints non-secret evidence identifiers. A process restart and final UI,
 PostgreSQL, Walrus, and Sui review remain manual acceptance steps.
 
+Run `pnpm preflight:hosted` first to check credentials, wallet authority,
+shared limits and advisory previews without requesting a payment. Configuration
+and service-recovery checks are in [Hosted deployment](docs/hosted-deployment.md#rehearsal-preflight).
+
 For the separate-agent sequence, run
 `pnpm exec tsx scripts/smoke-shared-wallet.ts`. Its default mode only prints the
 plan and required configuration. With `--execute` and the same explicit live
