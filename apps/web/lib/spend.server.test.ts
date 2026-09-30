@@ -52,6 +52,29 @@ integration("hosted spend orchestration", () => {
     expect(changed.kind).toBe("conflict");
   });
 
+  it("encodes public evidence with an empty seal policy in the actual signing request", async () => {
+    const { createAndProcessSpend } = await import("./spend.server");
+    const isolated = await createFixture(opened[0]!.db);
+    await createActivePolicies(opened[0]!.db, isolated);
+    const value = runtime();
+    let checked = false;
+    value.signer = { signTransaction: async (transaction) => {
+      const data = transaction.getData();
+      const call = data.commands.find((command) => command.MoveCall?.function === "record_spend")?.MoveCall;
+      if (call) {
+        const argument = call.arguments[6];
+        if (!argument || !("Input" in argument)) throw new Error("missing seal policy input");
+        const pure = data.inputs[argument.Input]?.Pure;
+        expect(pure?.bytes).toBe("AA=="); // BCS vector<u8> length zero, so Move sealed=false.
+        checked = true;
+      }
+      return { bytes: "AQI=", signature: "sig" };
+    } };
+    const result = await createAndProcessSpend({ context: context(isolated), idempotencyKey: `public-${crypto.randomUUID()}`, request: request(), runtime: value });
+    expect(result.intent.state).toBe("confirmed");
+    expect(checked).toBe(true);
+  });
+
   it("keeps an allowed intent unsigned while evidence publication is unavailable", async () => {
     const { createAndProcessSpend } = await import("./spend.server");
     let signed = false;

@@ -129,7 +129,7 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
   intent = signing;
   let completedSubmission: { digest: string; receiptId?: string } | null = null;
   try {
-    const execution = await executeApprovedSuiSpend({ transport: runtime.transport, signer: runtime.signer, deployment: DEPLOYMENTS.testnet, agent: agentAddress(intent.agentId), recipient: intent.recipient, amount: BigInt(intent.amountMist), coinType: intent.coinType, blobId: intent.evidenceBlobId!, sealPolicyId: "public", riskScore: intent.riskScore ?? 0, simulationPassed: true, purposeTag: intent.purposeTag });
+    const execution = await executeApprovedSuiSpend({ transport: runtime.transport, signer: runtime.signer, deployment: DEPLOYMENTS.testnet, agent: agentAddress(intent.agentId), recipient: intent.recipient, amount: BigInt(intent.amountMist), coinType: intent.coinType, blobId: intent.evidenceBlobId!, sealPolicyId: "", riskScore: intent.riskScore ?? 0, simulationPassed: true, purposeTag: intent.purposeTag });
     completedSubmission = execution;
     const submitted = await intents.transition(intent.id, "signing", intent.stateVersion, "submitted", { organizationId: intent.organizationId, txDigest: execution.digest, receiptId: execution.receiptId });
     if (!submitted) throw new Error("submission state race");
