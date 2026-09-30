@@ -34,11 +34,11 @@ export default function DocsPage() {
           <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[var(--text-mid)]">
             <li>Open Praxis, sign in with a Sui wallet, and create your workspace.</li>
             <li>Add an eligible execution wallet and review its spending limits.</li>
-            <li>Add an agent, grant wallet access, activate its limits and enable access.</li>
+            <li>Open the wallet and add agents. Review each agent's individual limits, activate them and enable access.</li>
             <li>Issue an assignment credential. Store it locally as PRAXIS_TOKEN; it is shown only once.</li>
             <li>Call GET /api/v1/agent with Authorization: Bearer PRAXIS_TOKEN to check access without a payment.</li>
           </ol>
-          <p className="mt-4 text-sm leading-7 text-[var(--text-mid)]">Payment requests use POST /api/v1/spend-intents. Requests are authorized by the credential's wallet assignment. Claude Code and Codex can call the HTTP API through a local tool or script; a native MCP connector is not included.</p>
+          <p className="mt-4 text-sm leading-7 text-[var(--text-mid)]">Preview with POST /api/v1/simulations to inspect current limits and risk without reserving funds or signing. Execute with POST /api/v1/spend-intents and an Idempotency-Key; current authorization, budgets and simulation are checked again. A preview is never an execution approval. Requests are authorized by the credential's wallet assignment. Claude Code and Codex can call the HTTP API through a local tool or script; a native MCP connector is not included.</p>
           <p className="mt-3 text-sm leading-7 text-[var(--text-mid)]">Hosted execution is limited to the configured Sui Testnet wallet, and published reasoning is public. Connecting a sign-in wallet does not grant it execution support.</p>
           <a className="focus-ring mt-4 inline-flex min-h-11 items-center text-sm text-[var(--accent)]" href="/app">Open app</a>
         </section>
@@ -66,7 +66,7 @@ export default function DocsPage() {
           <article className="flex max-w-[72ch] flex-col gap-10">
             <header className="flex flex-col gap-2">
               <h1 className="text-gradient text-[34px] font-semibold leading-[40px] tracking-tight">
-                Quickstart
+                Direct SDK quickstart
               </h1>
               <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
                 Install, configure a wallet adapter, gate your first spend. Testnet, SUI only in v1.
@@ -82,8 +82,7 @@ export default function DocsPage() {
 
             <Step id="configure" n={2} title="Configure">
               <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
-                Praxis takes a wallet adapter and never sees a private key. It only receives a
-                signer that signs the transaction it builds.
+                Direct SDK mode takes a wallet adapter. Keep the signer isolated from the agent. Hosted mode uses assignment credentials and the configured operator signer.
               </p>
               <CodeBlock tabs={DOCS_CONFIGURE} />
             </Step>
@@ -105,8 +104,7 @@ export default function DocsPage() {
 
             <Step id="audit" n={5} title="Read the audit trail">
               <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
-                Read receipts and counters with no wallet. Decrypt sealed reasoning as an
-                allowlisted auditor, server-side.
+                Read public receipts and counters with no wallet. Hosted reasoning is public. The legacy local encryption adapter is not a production Seal integration.
               </p>
               <CodeBlock tabs={DOCS_AUDIT} />
             </Step>

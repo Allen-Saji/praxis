@@ -56,8 +56,8 @@ export const DOCS_CONFIGURE: CodeTab[] = [
     language: "typescript",
     code: `import { Praxis, GenericAdapter } from "@allen-saji/praxis";
 
-// Bring any wallet. Praxis never sees a private key; it only
-// receives a WalletAdapter that signs the transaction it builds.
+// Connect a signer implementing the wallet adapter interface.
+// Isolate the signing key from your agent runtime.
 const wallet = new GenericAdapter({
   address: async () => signerAddress,
   signTransaction: async (tx) => signer.sign(tx),
@@ -92,8 +92,7 @@ const result = await praxis.spend({
   to: recipient,
   amount: 5_000_000_000n,
   reasoning: { prompt, decision, model },
-  privacy: "sealed",
-  auditors: [auditorAddress],
+  privacy: "public",
   onReport: (r) => r.recommendation === "proceed",
 });
 
@@ -111,9 +110,6 @@ export const DOCS_AUDIT: CodeTab[] = [
 const receipts = await praxis.audit.recent(50);
 const stats = await praxis.audit.indexStats();
 
-console.log(stats.totalAborts);  // drains prevented
-
-// Decrypt sealed reasoning as an allowlisted auditor (server-side).
-const reasoning = await praxis.audit.reveal(blobId, viewerAddress);`,
+console.log(stats.totalAborts);  // recorded blocked or aborted requests`,
   },
 ];

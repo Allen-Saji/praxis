@@ -60,6 +60,28 @@ invalid credentials are rejected. Claude Code and Codex can use this HTTP API
 through a local script or tool; a native MCP connector is not included.
 Connecting a sign-in wallet does not make it eligible for hosted execution.
 
+## Shared wallets and individual limits
+
+Open a wallet to see its agents alongside the shared daily and monthly budget.
+Each agent-wallet assignment has separate per-payment, daily and monthly caps,
+recipient rules, credentials and pause controls. Every payment must satisfy both
+the assignment policy and the wallet policy. Pending reservations count against
+both budgets; individual allowances are ceilings, not reserved balances.
+Budgets cover payment principal, not gas, storage or transfers outside Praxis.
+
+Agents can call `POST /api/v1/simulations` with their assignment credential and
+the same public payment payload as the spend API. The response includes policy
+violations, budget snapshots and a simulation report. Policy-blocked previews
+skip simulation. Preview never reserves funds, signs or publishes evidence and
+always returns `executionAuthorized: false`. An unavailable simulation returns
+HTTP 503 and an abort recommendation.
+
+After inspecting the report, submit an allowed request to
+`POST /api/v1/spend-intents` with an `Idempotency-Key`. Execution repeats all
+checks against current state. A previous preview cannot override policy changes,
+revocation or another agent's spending. Only submitted intents produce durable
+decision evidence. See the [hosted agent example](examples/hosted-agent.ts).
+
 ## How a spend works
 
 Hosted spend runs: authenticate credential, derive tenant/wallet/agent identity,
@@ -157,7 +179,7 @@ secure server sessions, tenant-scoped workspaces, three or more agent
 assignments, versioned wallet and assignment policy, scoped/revocable agent
 credentials, persistent shared budgets, idempotent orchestration, verified
 hosted Walrus evidence, submission-unknown reconciliation, an owner command
-deck, and the existing public audit dashboard. Normal SDK reads, simulation,
+deck, and private workspace activity views. Normal SDK reads, simulation,
 execution, and waits use the current Sui gRPC/GraphQL clients rather than the
 deprecated JSON-RPC client.
 
@@ -184,6 +206,16 @@ authorization with a funded disposable Testnet wallet. It spends Testnet SUI,
 publishes Walrus blobs, checks replay/conflict/block/budget/concurrency paths,
 and prints non-secret evidence identifiers. A process restart and final UI,
 PostgreSQL, Walrus, and Sui review remain manual acceptance steps.
+
+For the separate-agent sequence, run
+`pnpm exec tsx scripts/smoke-shared-wallet.ts`. Its default mode only prints the
+plan and required configuration. With `--execute` and the same explicit live
+guard, it previews two distinct assignments, exhausts A's daily allowance,
+records A's next attempt as blocked, and confirms B can still pay. It requires
+a controlled recipient, an explicit amount and run ID, and sufficient shared
+headroom. Configure A so that amount equals its remaining daily allowance and
+fits its per-payment and monthly limits. The script never resets budgets.
+Preserve the run ID and reconcile unresolved intents before another attempt.
 
 See `docs/SPEC.md` for the full product and technical spec.
 
