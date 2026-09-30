@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { createDb, AuthRepository, IntentRepository, PolicyRepository, ReservationRepository, WalletExecutionLeaseRepository, WorkspaceRepository } from "@allen-saji/praxis-db";
+import { createDb, AuthRepository, IntentRepository, PolicyRepository, ReservationRepository, SpendingPreviewRepository, WalletExecutionLeaseRepository, WorkspaceRepository } from "@allen-saji/praxis-db";
 import { tokenDigest } from "@allen-saji/praxis-control-plane";
 import { SuiGraphQLClient } from "@mysten/sui/graphql";
 
@@ -35,6 +35,7 @@ export function policyRepository() {
 export function intentRepository() { return new IntentRepository(controlPlaneDb()); }
 export function reservationRepository() { return new ReservationRepository(controlPlaneDb()); }
 export function executionLeaseRepository() { return new WalletExecutionLeaseRepository(controlPlaneDb()); }
+export function spendingPreviewRepository() { return new SpendingPreviewRepository(controlPlaneDb()); }
 
 export const SESSION_MAX_AGE_SECONDS = 43_200;
 

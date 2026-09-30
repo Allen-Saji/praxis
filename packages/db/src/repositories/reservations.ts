@@ -13,8 +13,8 @@ type PeriodKind = "day" | "month";
 export class BudgetLimitError extends Error {
   readonly code = "BUDGET_EXCEEDED";
 
-  constructor(readonly periodKind: PeriodKind) {
-    super(`${periodKind} budget would be exceeded`);
+  constructor(readonly periodKind: PeriodKind, readonly scope: "wallet" | "assignment" = "wallet") {
+    super(`${scope} ${periodKind} budget would be exceeded`);
     this.name = "BudgetLimitError";
   }
 }
@@ -169,11 +169,11 @@ export class ReservationRepository {
 
       for (const row of walletCounters) {
         const remaining = walletLimits[row.periodKind as PeriodKind] - BigInt(row.spentMist) - BigInt(row.reservedMist);
-        if (amountMist > remaining) throw new BudgetLimitError(row.periodKind as PeriodKind);
+        if (amountMist > remaining) throw new BudgetLimitError(row.periodKind as PeriodKind, "wallet");
       }
       for (const row of assignmentCounters) {
         const remaining = assignmentLimits[row.periodKind as PeriodKind] - BigInt(row.spentMist) - BigInt(row.reservedMist);
-        if (amountMist > remaining) throw new BudgetLimitError(row.periodKind as PeriodKind);
+        if (amountMist > remaining) throw new BudgetLimitError(row.periodKind as PeriodKind, "assignment");
       }
 
       for (const counter of walletCounters) {

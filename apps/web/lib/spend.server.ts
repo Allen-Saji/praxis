@@ -1,3 +1,5 @@
+import { budgetViolation } from "./decision-reason";
+import { jsonSafeReport, simulationBlocks, toSdkPolicy } from "./spend-report";
 import "server-only";
 import { createHash } from "node:crypto";
 import { hashCanonical, normalizeSuiAddress, parseMist, stablePurposeTag, type PolicySnapshot } from "@allen-saji/praxis-control-plane";
@@ -43,7 +45,7 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
       if (result.kind === "blocked") intent = result.intent;
     } catch (error) {
       if (!(error instanceof BudgetLimitError)) throw error;
-      intent = (await intents.blockForBudget({ organizationId: intent.organizationId, intentId: intent.id, failureCode: `${error.periodKind.toUpperCase()}_BUDGET_EXCEEDED` }))!;
+      intent = (await intents.blockForBudget({ organizationId: intent.organizationId, intentId: intent.id, failureCode: `${error.scope.toUpperCase()}_${error.periodKind.toUpperCase()}_BUDGET_EXCEEDED` }))!;
     }
   }
 
@@ -66,8 +68,7 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
       const serialized = jsonSafeReport(report);
       const snapshot = policySnapshot(intent);
       const threshold = Math.min(snapshot.wallet.policy.blockRiskScoreAt, snapshot.assignment.policy.blockRiskScoreAt);
-      const hardBlock = report.risks.some((risk) => ["SIM_FAILED", "DRAIN_DETECTED"].includes(risk.code));
-      const blocked = hardBlock || report.recommendation === "abort" || report.riskScore >= threshold;
+      const blocked = simulationBlocks(report, threshold);
       intent = (await intents.completeSimulation({ organizationId: intent.organizationId, intentId: intent.id, expectedVersion: intent.stateVersion, simulationJson: serialized, simulationHash: hashCanonical(serialized), riskScore: report.riskScore, recommendation: report.recommendation, blocked, abortReason: blocked ? report.risks[0]?.code ?? "RISK_THRESHOLD" : undefined }))!;
     }
   }
@@ -189,16 +190,6 @@ function policySnapshot(intent: Intent): PolicySnapshot {
   return value;
 }
 
-function toSdkPolicy(snapshot: PolicySnapshot) {
-  const wallet = snapshot.wallet.policy;
-  const assignment = snapshot.assignment.policy;
-  return { maxPerTx: BigInt(wallet.maxPerTxMist) < BigInt(assignment.maxPerTxMist) ? BigInt(wallet.maxPerTxMist) : BigInt(assignment.maxPerTxMist), maxPerDay: BigInt(wallet.maxPerDayMist) < BigInt(assignment.maxPerDayMist) ? BigInt(wallet.maxPerDayMist) : BigInt(assignment.maxPerDayMist), minRiskScoreToBlock: Math.min(wallet.blockRiskScoreAt, assignment.blockRiskScoreAt), requireSim: true };
-}
-
-function jsonSafeReport(report: NormalizedSimulationReport): Record<string, unknown> {
-  return { ...report, gasEstimate: report.gasEstimate.toString(), walletBalance: report.walletBalance.toString(), rawEffects: report.rawEffects ?? null };
-}
-
 function evidenceDocument(intent: Intent, walletAddress?: string) {
   const document = { schemaVersion: 3, intentId: intent.id, organizationRefHash: createHash("sha256").update(intent.organizationId).digest("hex"), agentRefHash: createHash("sha256").update(intent.agentId).digest("hex"), walletAddress: walletAddress ?? null, requestHash: intent.requestHash, purposeTag: intent.purposeTag, intent: { recipient: intent.recipient, amountMist: intent.amountMist, coinType: intent.coinType, privacy: intent.privacy }, reasoning: intent.reasoningJson, simulation: intent.simulationJson, walletPolicyVersionId: intent.walletPolicyVersionId, walletPolicyHash: intent.walletPolicyHash, assignmentPolicyVersionId: intent.assignmentPolicyVersionId, assignmentPolicyHash: intent.assignmentPolicyHash, effectivePolicyHash: intent.effectivePolicyHash, decision: intent.abortReason ? "blocked" : "allowed", timestamps: { receivedAt: intent.receivedAt.toISOString(), simulatedAt: intent.simulatedAt?.toISOString() ?? null }, versions: { schema: 3, controlPlane: "0.1.0", sdk: "0.1.0" } };
   return { ...document, evidenceHash: hashCanonical(document) };
@@ -208,7 +199,7 @@ function agentAddress(agentId: string): string { return `0x${createHash("sha256"
 function abortReason(value: string | null): "agent_decision" | "policy_block" | "high_risk" | "sim_failed" { if (value?.includes("SIM")) return "sim_failed"; if (value?.includes("RISK") || value === "DRAIN_DETECTED") return "high_risk"; return "policy_block"; }
 async function retrySimulation<T>(operation: () => Promise<T>): Promise<T> { let last: unknown; for (let attempt = 0; attempt < 2; attempt += 1) { try { return await operation(); } catch (error) { last = error; if (!(error instanceof PraxisSdkError) || !error.retryable || attempt === 1) throw error; await new Promise((resolve) => setTimeout(resolve, 50 + Math.floor(Math.random() * 50))); } } throw last; }
 
-export function safeIntent(intent: Intent) { return { intentId: intent.id, state: intent.state, outcome: intent.outcome, recipient: intent.recipient, amountMist: intent.amountMist, walletPolicyVersionId: intent.walletPolicyVersionId, assignmentPolicyVersionId: intent.assignmentPolicyVersionId, effectivePolicyHash: intent.effectivePolicyHash, riskScore: intent.riskScore, recommendation: intent.recommendation, abortReason: intent.abortReason, txDigest: intent.txDigest, receiptId: intent.receiptId, walrusBlobId: intent.evidenceBlobId, createdAt: intent.createdAt, completedAt: intent.completedAt }; }
+export function safeIntent(intent: Intent) { return { intentId: intent.id, state: intent.state, outcome: intent.outcome, recipient: intent.recipient, amountMist: intent.amountMist, walletPolicyVersionId: intent.walletPolicyVersionId, assignmentPolicyVersionId: intent.assignmentPolicyVersionId, effectivePolicyHash: intent.effectivePolicyHash, riskScore: intent.riskScore, recommendation: intent.recommendation, abortReason: intent.abortReason, budgetViolation: budgetViolation(intent.abortReason), txDigest: intent.txDigest, receiptId: intent.receiptId, walrusBlobId: intent.evidenceBlobId, createdAt: intent.createdAt, completedAt: intent.completedAt }; }
 
 export async function reconcileIntents(runtime: Runtime = defaultRuntime()) {
   const intents = intentRepository();

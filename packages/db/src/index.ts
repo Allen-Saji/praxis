@@ -3,6 +3,7 @@ export * from "./schema";
 export * from "./repositories/intents";
 export * from "./repositories/auth";
 export * from "./repositories/workspaces";
+export * from "./repositories/previews";
 export * from "./repositories/reservations";
 export * from "./repositories/policies";
 export * from "./repositories/transactions";
