@@ -13,10 +13,10 @@
     "format:check": "node scripts/check-format.mjs",
     "lint": "pnpm packages:build && pnpm --filter @allen-saji/praxis-web lint",
     "typecheck": "pnpm packages:build && pnpm -r --if-present typecheck && tsc --noEmit -p tsconfig.scripts.json",
-    "test:unit": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test",
+    "test:unit": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test && pnpm test:ops",
     "test:db": "pnpm packages:build && pnpm --filter @allen-saji/praxis-db test:db",
     "test:integration": "pnpm packages:build && pnpm --filter @allen-saji/praxis-web test",
-    "test": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test && pnpm --filter @allen-saji/praxis-db test:db && pnpm --filter @allen-saji/praxis-web test",
+    "test": "pnpm packages:build && pnpm --filter @allen-saji/praxis test && pnpm --filter @allen-saji/praxis-control-plane test:coverage && pnpm --filter @allen-saji/praxis-web test && pnpm --filter @allen-saji/praxis-db test:db && pnpm --filter @allen-saji/praxis-web test && pnpm test:ops",
     "build": "pnpm -r --if-present build",
     "db:generate": "pnpm --filter @allen-saji/praxis-db generate",
     "db:migrate": "pnpm --filter @allen-saji/praxis-db migrate",
@@ -28,7 +28,9 @@
     "move:test": "sui move test --path move/praxis_core",
     "deploy:move": "bash scripts/deploy-move.sh",
     "seed": "tsx scripts/seed-demo-data.ts",
-    "demo:cli": "tsx scripts/demo-cli.ts"
+    "demo:cli": "tsx scripts/demo-cli.ts",
+    "preflight:hosted": "tsx scripts/preflight-hosted.ts",
+    "test:ops": "tsx --test scripts/lib/hosted-preflight.test.ts"
   },
   "devDependencies": {
     "@allen-saji/praxis": "workspace:*",
