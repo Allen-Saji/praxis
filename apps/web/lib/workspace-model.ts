@@ -1,6 +1,6 @@
 import type { WorkspaceRepository } from "@allen-saji/praxis-db";
 export type Overview = NonNullable<Awaited<ReturnType<WorkspaceRepository["workspaceOverview"]>>>;
-type AgentReadinessData = Pick<Overview, "agents" | "assignments" | "wallets" | "scopes" | "policyVersions" | "credentials">;
+type AgentReadinessData = Pick<Overview, "agents" | "assignments" | "wallets" | "scopes" | "policyVersions"> & { credentials: Array<Pick<Overview["credentials"][number], "assignmentId" | "revokedAt" | "expiresAt">> };
 type WalletBudgetData = Pick<Overview, "scopes" | "policyVersions" | "walletCounters">;
 export function agentReadiness(data: AgentReadinessData, agentId: string, now = new Date()) {
   const agent = data.agents.find((item) => item.id === agentId);
@@ -23,4 +23,31 @@ export function walletBudget(data: WalletBudgetData, walletId: string, period: "
   const spent = BigInt(counter?.spentMist ?? 0); const reserved = BigInt(counter?.reservedMist ?? 0);
   const limit = policy ? BigInt(period === "day" ? policy.maxPerDayMist : policy.maxPerMonthMist) : null;
   return { spent, reserved, limit, available: limit === null ? null : limit > spent + reserved ? limit - spent - reserved : 0n };
+}
+
+type AssignmentBudgetData = WalletBudgetData & Pick<Overview, "assignments" | "assignmentCounters">;
+
+/** Individual allowance and shared headroom are caps, never separate balances. */
+export function assignmentBudget(data: AssignmentBudgetData, assignmentId: string, period: "day" | "month") {
+  const assignment = data.assignments.find((item) => item.id === assignmentId);
+  const scope = data.scopes.find((item) => item.assignmentId === assignmentId);
+  const policy = data.policyVersions.find(({ version }) => version.id === scope?.currentVersionId && version.status === "active")?.version;
+  const counter = data.assignmentCounters.find((item) => item.assignment.id === assignmentId && item.counter.periodKind === period)?.counter;
+  const spent = BigInt(counter?.spentMist ?? 0);
+  const reserved = BigInt(counter?.reservedMist ?? 0);
+  const limit = policy ? BigInt(period === "day" ? policy.maxPerDayMist : policy.maxPerMonthMist) : null;
+  const available = limit === null ? null : limit > spent + reserved ? limit - spent - reserved : 0n;
+  const shared = assignment ? walletBudget(data, assignment.walletId, period) : null;
+  const sharedAvailable = shared?.available ?? null;
+  const effectiveAvailable = available === null || sharedAvailable === null ? null : available < sharedAvailable ? available : sharedAvailable;
+  return { spent, reserved, limit, available, sharedAvailable, effectiveAvailable, limitedByWallet: available !== null && sharedAvailable !== null && sharedAvailable < available };
+}
+
+export function assignmentTransactionCap(data: AssignmentBudgetData, assignmentId: string) {
+  const assignment = data.assignments.find((item) => item.id === assignmentId);
+  const policyAt = (scopeId?: string) => data.policyVersions.find(({ version }) => version.id === scopeId && version.status === "active")?.version;
+  const individual = policyAt(data.scopes.find((item) => item.assignmentId === assignmentId)?.currentVersionId ?? undefined);
+  const wallet = policyAt(data.scopes.find((item) => item.walletId === assignment?.walletId)?.currentVersionId ?? undefined);
+  if (!individual || !wallet) return null;
+  return BigInt(individual.maxPerTxMist) < BigInt(wallet.maxPerTxMist) ? BigInt(individual.maxPerTxMist) : BigInt(wallet.maxPerTxMist);
 }

@@ -39,3 +39,10 @@ export async function defaultWorkspacePath(section = "") {
   const workspaces = await workspaceRepository().listForUser(session.user.id);
   return workspaces[0] ? `/app/workspaces/${workspaces[0].organization.slug}${section}` : "/app/workspaces/new";
 }
+
+export async function requireWalletDetail(slug: string, walletId: string) {
+  const session = await requireOwnerSession();
+  const detail = await workspaceRepository().walletDetailForMember(slug, session.user.id, walletId);
+  if (!detail) notFound();
+  return { session, ...detail };
+}

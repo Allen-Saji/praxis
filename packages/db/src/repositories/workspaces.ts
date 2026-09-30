@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, or, gte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, gte, sql, notExists } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "../schema";
 import { appendAuditEvent } from "./audit";
@@ -198,6 +198,45 @@ export class WorkspaceRepository {
       this.db.select({ counter: schema.walletBudgetCounters, wallet: schema.wallets }).from(schema.walletBudgetCounters).innerJoin(schema.wallets, eq(schema.wallets.id, schema.walletBudgetCounters.walletId)).where(and(eq(schema.wallets.organizationId, organizationId), currentWalletWindow)),
     ]);
     return { ...membership, wallets, scopes, policyVersions, walletCounters, day, month };
+  }
+
+  /** Wallet-scoped data for the owner view; never returns credential hashes. */
+  async walletDetailForMember(slug: string, userId: string, walletId: string, now = new Date()) {
+    const membership = await this.organizationBySlugForMember(slug, userId);
+    if (!membership) return null;
+    const organizationId = membership.organization.id;
+    const [wallet] = await this.db.select().from(schema.wallets).where(and(
+      eq(schema.wallets.id, walletId), eq(schema.wallets.organizationId, organizationId), isNull(schema.wallets.archivedAt),
+    )).limit(1);
+    if (!wallet) return null;
+    const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const assignmentFilter = and(eq(schema.assignments.organizationId, organizationId), eq(schema.assignments.walletId, walletId), inArray(schema.assignments.status, ["active", "disabled"]));
+    const assignmentIds = this.db.select({ id: schema.assignments.id }).from(schema.assignments).where(assignmentFilter);
+    const scopeFilter = and(eq(schema.policyScopes.organizationId, organizationId), or(eq(schema.policyScopes.walletId, walletId), inArray(schema.policyScopes.assignmentId, assignmentIds)));
+    const [agents, assignments, scopes, policyVersions, credentials, walletCounters, assignmentCounters] = await Promise.all([
+      this.db.select().from(schema.agents).where(and(eq(schema.agents.organizationId, organizationId), inArray(schema.agents.status, ["active", "disabled"]), notExists(this.db.select({ id: schema.assignments.id }).from(schema.assignments).where(and(eq(schema.assignments.agentId, schema.agents.id), eq(schema.assignments.walletId, walletId), eq(schema.assignments.status, "archived")))))).orderBy(schema.agents.name),
+      this.db.select().from(schema.assignments).where(assignmentFilter),
+      this.db.select().from(schema.policyScopes).where(scopeFilter),
+      this.db.select({ version: schema.policyVersions, scope: schema.policyScopes }).from(schema.policyVersions)
+        .innerJoin(schema.policyScopes, and(eq(schema.policyScopes.currentVersionId, schema.policyVersions.id), eq(schema.policyVersions.status, "active")))
+        .where(scopeFilter),
+      this.db.select({ id: schema.agentCredentials.id, assignmentId: schema.agentCredentials.assignmentId, tokenPrefix: schema.agentCredentials.tokenPrefix, revokedAt: schema.agentCredentials.revokedAt, expiresAt: schema.agentCredentials.expiresAt, lastUsedAt: schema.agentCredentials.lastUsedAt })
+        .from(schema.agentCredentials).where(and(eq(schema.agentCredentials.organizationId, organizationId), inArray(schema.agentCredentials.assignmentId, assignmentIds))),
+      this.db.select({ counter: schema.walletBudgetCounters, wallet: schema.wallets }).from(schema.walletBudgetCounters)
+        .innerJoin(schema.wallets, eq(schema.wallets.id, schema.walletBudgetCounters.walletId))
+        .where(and(eq(schema.wallets.organizationId, organizationId), eq(schema.wallets.id, walletId), or(
+          and(eq(schema.walletBudgetCounters.periodKind, "day"), eq(schema.walletBudgetCounters.periodStart, day)),
+          and(eq(schema.walletBudgetCounters.periodKind, "month"), eq(schema.walletBudgetCounters.periodStart, month)),
+        ))),
+      this.db.select({ counter: schema.assignmentBudgetCounters, assignment: schema.assignments }).from(schema.assignmentBudgetCounters)
+        .innerJoin(schema.assignments, eq(schema.assignments.id, schema.assignmentBudgetCounters.assignmentId))
+        .where(and(assignmentFilter, or(
+          and(eq(schema.assignmentBudgetCounters.periodKind, "day"), eq(schema.assignmentBudgetCounters.periodStart, day)),
+          and(eq(schema.assignmentBudgetCounters.periodKind, "month"), eq(schema.assignmentBudgetCounters.periodStart, month)),
+        ))),
+    ]);
+    return { ...membership, wallets: [wallet], wallet, agents, assignments, scopes, policyVersions, credentials, walletCounters, assignmentCounters, day, month, observedAt: now };
   }
 
   async decisionsForMember(input: { organizationId: string; userId: string; limit?: number; attention?: boolean; agentId?: string; includeAgentOptions?: boolean; state?: typeof schema.spendIntents.$inferSelect.state; since?: Date; before?: { createdAt: Date; id: string } }) {
