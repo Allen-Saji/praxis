@@ -336,7 +336,7 @@ export class ReservationRepository {
       const [finalIntent] = await tx.update(schema.spendIntents).set({
         state: finalState,
         stateVersion: intent.stateVersion + 1,
-        ...(finalState === "confirmed" ? { outcome: "confirmed" as const } : finalState === "failed" ? { outcome: "failed" as const } : {}),
+        ...(finalState === "confirmed" ? { outcome: "confirmed" as const, confirmedAt: now } : finalState === "failed" ? { outcome: "failed" as const } : {}),
         ...(txDigest ? { txDigest } : {}),
         ...(nextState === "released" && mode !== "expired" ? { failureCode: proof?.kind === "definite_nonexecution" || proof?.kind === "definite_failure" ? proof.failureCode : "RESERVATION_RELEASED" } : {}),
         completedAt: now,

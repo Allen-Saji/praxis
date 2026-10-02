@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { IntentRepository } from "../src/repositories/intents";
+import { WorkspaceRepository } from "../src/repositories/workspaces";
 import { PolicyRepository } from "../src/repositories/policies";
 import { BudgetLimitError, ReservationRepository } from "../src/repositories/reservations";
 import { assignmentBudgetCounters, spendIntents, walletBudgetCounters } from "../src/schema";
@@ -178,6 +179,11 @@ describe("ReservationRepository", () => {
     const commitProof = { kind: "confirmed" as const, outcome: "confirmed" as const, txDigest: hexHash("confirmed"), checkedAt: new Date(), evidence: { kind: "operator_review" as const, intentId: secondIntent.id, purposeTag: secondIntent.purposeTag, reviewId: "review-confirm" } };
     expect((await repository.commit({ organizationId: fixture.organizationId, reservationId: committed.reservation.id, proof: commitProof }))?.changed).toBe(true);
     expect((await repository.commit({ organizationId: fixture.organizationId, reservationId: committed.reservation.id, proof: commitProof }))?.changed).toBe(false);
+    const confirmedIntent = await intentRepository.byId(fixture.organizationId, secondIntent.id);
+    expect(confirmedIntent?.confirmedAt).toBeInstanceOf(Date);
+    expect(confirmedIntent?.confirmedAt).toEqual(confirmedIntent?.completedAt);
+    const overview = await new WorkspaceRepository(value.db).workspaceOverview(fixture.organizationId, fixture.userId, confirmedIntent!.completedAt!);
+    expect(overview?.totals.spentToday).toBe("3");
 
     const [walletCounter] = await value.db.select().from(walletBudgetCounters).where(and(eq(walletBudgetCounters.walletId, fixture.walletId), eq(walletBudgetCounters.periodKind, "day")));
     const [assignmentCounter] = await value.db.select().from(assignmentBudgetCounters).where(and(eq(assignmentBudgetCounters.assignmentId, fixture.assignmentId), eq(assignmentBudgetCounters.periodKind, "day")));
