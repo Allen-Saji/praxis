@@ -1,0 +1,10 @@
+[package]
+name = "praxis_vault"
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+
+[dependencies]
+
+[addresses]
+praxis_vault = "0x0"
