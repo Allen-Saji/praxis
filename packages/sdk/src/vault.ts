@@ -4,7 +4,7 @@ import { normalizeSuiAddressStrict } from "./address";
 /** Explicit unpublished-vault configuration. Never falls back to demo ids. */
 export interface VaultTarget { packageId: string; vaultId: string }
 export interface VaultPolicy { perPayment: bigint; allowance: bigint; recipients: string[] }
-export interface VaultGrant extends VaultPolicy { agent: string; delegate: string; expiresMs: bigint }
+export interface VaultGrant extends VaultPolicy { agent: string; delegate: string; expiresMs: bigint; daily?: bigint; monthly?: bigint }
 const MAX_U64 = (1n << 64n) - 1n;
 
 function u64(value: bigint, label: string, positive = false): bigint {
@@ -68,6 +68,12 @@ export function buildAuthorizeVaultAgent(input: VaultTarget & VaultGrant & { own
   const delegate = normalizeSuiAddressStrict(input.delegate);
   if (BigInt(delegate) === 0n) throw new Error("delegate must not be zero");
   tx.moveCall({ target, arguments: [vault, tx.pure.address(normalizeSuiAddressStrict(input.agent)), tx.pure.address(delegate), ...policyArgs(tx, input), tx.pure.u64(u64(input.expiresMs, "expiresMs", true)), tx.object("0x6")] });
+  if (input.daily !== undefined || input.monthly !== undefined) {
+    if (input.daily === undefined || input.monthly === undefined) throw new Error("Both calendar limits are required");
+    u64(input.daily, "daily", true); u64(input.monthly, "monthly", true);
+    if (input.monthly < input.daily) throw new Error("monthly must cover daily");
+    tx.moveCall({ target: `${packageAddress(input.packageId)}::vault::set_agent_window_limits`, arguments: [vault, tx.pure.address(normalizeSuiAddressStrict(input.agent)), tx.pure.u64(input.daily), tx.pure.u64(input.monthly)] });
+  }
   return tx;
 }
 
