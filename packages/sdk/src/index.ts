@@ -55,5 +55,6 @@ export type {
   ReasoningBlob,
 } from "./types";
 export { buildSetVaultWindowLimits, buildCreateVault, buildDepositVault, buildWithdrawVault, buildSetVaultPolicy, buildSetVaultPaused, buildAuthorizeVaultAgent, buildRevokeVaultAgent, buildVaultSpend, type VaultTarget, type VaultPolicy, type VaultGrant, type VaultSpend } from "./vault";
-export { validateVaultTransaction, prepareVaultSubmission, submitJournaledVaultPayment, type VaultSubmission, type VaultSubmissionJournal } from "./vault-execution";
-export { readVaultState, readVaultGrant, type VaultState, type VaultGrantState, type VaultDynamicFields } from "./vault-state";
+export { readJournaledVaultOutcome, validateVaultTransaction, prepareVaultSubmission, submitJournaledVaultPayment, type VaultSubmission, type VaultSubmissionJournal } from "./vault-execution";
+export { readSuiClock, readVaultState, readVaultGrant, type VaultState, type VaultGrantState, type VaultDynamicFields } from "./vault-state";
+export { simulateVaultPayment } from "./vault-simulation";

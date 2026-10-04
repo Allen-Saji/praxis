@@ -1,8 +1,9 @@
+import { simulateVaultPayment } from "./vault-simulation";
 import { describe, expect, it, vi } from "vitest";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction, TransactionDataBuilder } from "@mysten/sui/transactions";
 import { buildVaultSpend } from "./vault";
-import { prepareVaultSubmission, submitJournaledVaultPayment, validateVaultTransaction, type VaultSubmission, type VaultSubmissionJournal } from "./vault-execution";
+import { prepareVaultSubmission, readJournaledVaultOutcome, submitJournaledVaultPayment, validateVaultTransaction, type VaultSubmission, type VaultSubmissionJournal } from "./vault-execution";
 import type { SuiTransport } from "./ports";
 
 const address = (digit: string) => `0x${digit.repeat(64)}`;
@@ -38,6 +39,26 @@ function fixtures() {
 }
 
 describe("durable vault submission", () => {
+  it("reconciles a lost response from chain evidence without broadcasting", async () => {
+    const f = fixtures();
+    const row = await prepareVaultSubmission({ ...f, intentId: "intent", request, bytes: await bytes(), maxGas: 1000n });
+    f.transport.getTransaction = async () => ({ digest: row.digest, status: { success: true }, effects: { changedObjects: [{ idOperation: "Created", objectId: address("6") }] }, objectTypes: { [address("6")]: `${request.packageId}::vault::Receipt` } });
+    expect(await readJournaledVaultOutcome({ ...f, intentId: "intent" })).toEqual({ kind: "confirmed", digest: row.digest, receiptId: address("6") });
+    expect(f.transport.executeTransaction).not.toHaveBeenCalled();
+    f.transport.getTransaction = async () => { throw new Error("not found or RPC unavailable"); };
+    expect(await readJournaledVaultOutcome({ ...f, intentId: "intent" })).toEqual({ kind: "unknown", digest: row.digest });
+    f.transport.getTransaction = async () => ({ digest: row.digest, status: { success: false } });
+    expect(await readJournaledVaultOutcome({ ...f, intentId: "intent" })).toEqual({ kind: "failed", digest: row.digest });
+  });
+  it("scores principal drain against vault funds without fabricating audit balance changes", async () => {
+    const f = fixtures();
+    const changes = [{ address: request.recipient, coinType: "0x2::sui::SUI", amount: "42" }];
+    f.transport.simulateTransaction = async () => ({ digest: "sim", status: { success: true }, balanceChanges: changes, effects: { gasUsed: { computationCost: "1", storageCost: "0", storageRebate: "0" } } });
+    const report = await simulateVaultPayment({ transport: f.transport, bytes: await bytes(), request, maxGas: 1000n, vaultBalance: 50n, daySpent: 0n });
+    expect(report.walletBalance).toBe(50n);
+    expect(report.risks.some((risk) => risk.code === "DRAIN_DETECTED")).toBe(true);
+    expect(report.balanceChanges).toEqual([{ owner: request.recipient, coinType: "0x2::sui::SUI", amount: "42" }]);
+  });
   it("rejects extra commands, altered amount and excessive gas before signing", async () => {
     const data = await bytes();
     expect(() => validateVaultTransaction(data, request, 1000n)).not.toThrow();

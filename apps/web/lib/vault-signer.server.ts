@@ -4,7 +4,7 @@ import type { VaultSpend } from "@allen-saji/praxis";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { HttpError } from "./control-plane.server";
 
-async function signerRequest(path: "/provision" | "/sign", body: unknown): Promise<Record<string, unknown>> {
+async function signerRequest(path: "/provision" | "/address" | "/sign", body: unknown): Promise<Record<string, unknown>> {
   const endpoint = process.env.PRAXIS_SIGNER_URL;
   const token = process.env.PRAXIS_SIGNER_TOKEN;
   if (!endpoint || !token) throw new HttpError(503, "SIGNER_UNAVAILABLE", "Vault signing is not configured.");
@@ -29,4 +29,10 @@ export async function signVaultPayment(scope: DelegateScope, payment: VaultSpend
   const result = await signerRequest("/sign", { scope, payment: encodedPayment, bytes: Buffer.from(bytes).toString("base64") });
   if (typeof result.signature !== "string" || !result.signature || result.signature.length > 4096) throw new HttpError(503, "SIGNER_UNAVAILABLE", "Signer returned an invalid signature.");
   return result.signature;
+}
+
+export async function vaultDelegateAddress(scope: DelegateScope): Promise<string> {
+  const result = await signerRequest("/address", { scope });
+  if (typeof result.address !== "string" || !isValidSuiAddress(result.address)) throw new HttpError(503, "SIGNER_UNAVAILABLE", "Signer returned an invalid delegate address.");
+  return normalizeSuiAddress(result.address);
 }

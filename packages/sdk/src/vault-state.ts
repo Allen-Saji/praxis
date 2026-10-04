@@ -50,3 +50,15 @@ export async function readVaultGrant(transport: VaultDynamicFields, packageId: s
   if (!actualName || typeof actualName !== "object" || !("type" in actualName) || actualName.type !== "address" || !("bcs" in actualName) || !(actualName.bcs instanceof Uint8Array) || bcs.Address.parse(actualName.bcs) !== normalized) throw new Error("Vault grant identity mismatch");
   return GrantBcs.parse(value.bcs);
 }
+
+const ClockBcs = bcs.struct("Clock", { id: bcs.Address, timestamp_ms: bcs.u64() });
+export async function readSuiClock(transport: SuiTransport): Promise<bigint> {
+  const id = normalizeSuiAddressStrict("0x6");
+  const raw = await transport.getObject({ objectId: id, include: { content: true } });
+  if (!raw || typeof raw !== "object" || !("object" in raw)) throw new Error("Chain clock is unavailable");
+  const object = raw.object;
+  if (!object || typeof object !== "object" || !("objectId" in object) || object.objectId !== id || !("type" in object) || !["0x2::clock::Clock", `${normalizeSuiAddressStrict("0x2")}::clock::Clock`].includes(String(object.type)) || !("content" in object) || !(object.content instanceof Uint8Array)) throw new Error("Invalid chain clock");
+  const clock = ClockBcs.parse(object.content);
+  if (clock.id !== id) throw new Error("Chain clock identity mismatch");
+  return BigInt(clock.timestamp_ms);
+}

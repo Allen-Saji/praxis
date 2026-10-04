@@ -40,7 +40,7 @@ async function body(request: IncomingMessage) {
 
 /** Bind to loopback; use an authenticated TLS reverse proxy for remote access.
  * Token belongs only to the web backend, never browsers or agent credentials. */
-export function createVaultSignerServer(store: Pick<TestnetDelegateStore, "provision" | "sign">, token: string) {
+export function createVaultSignerServer(store: Pick<TestnetDelegateStore, "provision" | "address" | "sign">, token: string) {
   if (Buffer.byteLength(token) < 32) throw new Error("Signer service token must contain at least 32 bytes");
   const expected = createHash("sha256").update(`Bearer ${token}`).digest();
   const server = createServer(async (request, response) => {
@@ -49,13 +49,13 @@ export function createVaultSignerServer(store: Pick<TestnetDelegateStore, "provi
     const finish = (status: number, result: unknown) => { response.statusCode = status; response.end(JSON.stringify(result)); };
     const received = createHash("sha256").update(request.headers.authorization ?? "").digest();
     if (!timingSafeEqual(expected, received)) return finish(401, { error: "Unauthorized" });
-    if (request.method !== "POST" || !["/provision", "/sign"].includes(request.url ?? "")) return finish(404, { error: "Not found" });
+    if (request.method !== "POST" || !["/provision", "/address", "/sign"].includes(request.url ?? "")) return finish(404, { error: "Not found" });
     if (request.headers["content-type"] !== "application/json") return finish(415, { error: "JSON required" });
     try {
       const row = await body(request);
-      if (request.url === "/provision") {
+      if (request.url === "/provision" || request.url === "/address") {
         exact(row, ["scope"]);
-        return finish(200, await store.provision(scope(row.scope)));
+        return finish(200, await (request.url === "/address" ? store.address(scope(row.scope)) : store.provision(scope(row.scope))));
       }
       exact(row, ["scope", "payment", "bytes"]);
       if (typeof row.bytes !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/.test(row.bytes) || row.bytes.length % 4 !== 0) throw new Error("Invalid transaction encoding");

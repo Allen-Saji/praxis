@@ -106,7 +106,7 @@ async function readBalance(transport: SuiTransport, owner: string, coinType: str
   }
 }
 
-function decodeBalanceChanges(value: Array<Record<string, unknown>> | undefined, sender: string, coinType: string): BalanceDelta[] {
+export function decodeBalanceChanges(value: Array<Record<string, unknown>> | undefined, sender: string, coinType: string): BalanceDelta[] {
   if (!value) throw new PraxisSdkError("MALFORMED_SIMULATION", "simulation balance changes are missing");
   return value.map((change) => {
     if (typeof change.address !== "string" || typeof change.coinType !== "string" || typeof change.amount !== "string" || !/^-?\d+$/.test(change.amount)) {
@@ -125,7 +125,7 @@ function decodeBalanceChanges(value: Array<Record<string, unknown>> | undefined,
   });
 }
 
-function decodeGas(effects: Record<string, unknown> | undefined): bigint {
+export function decodeGas(effects: Record<string, unknown> | undefined): bigint {
   const gasUsed = effects?.gasUsed;
   if (!isRecord(gasUsed)) throw new PraxisSdkError("MALFORMED_SIMULATION", "simulation gas data is missing");
   const fields = ["computationCost", "storageCost", "storageRebate"];

@@ -48,6 +48,8 @@ export class TestnetDelegateStore {
     } finally { await file.close(); }
   }
 
+  async address(scope: DelegateScope): Promise<{ address: string }> { return { address: (await this.read(this.binding(scope))).toSuiAddress() }; }
+
   async provision(scope: DelegateScope): Promise<{ address: string }> {
     const binding = this.binding(scope);
     await mkdir(this.options.directory, { recursive: true, mode: 0o700 });

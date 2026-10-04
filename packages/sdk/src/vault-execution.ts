@@ -102,3 +102,27 @@ export async function submitJournaledVaultPayment(input: { intentId: string; jou
   if (receipts.length !== 1 || typeof receipts[0].objectId !== "string") throw new PraxisSdkError("TRANSACTION_SUBMISSION_UNKNOWN", "Vault receipt could not be established", { txDigest: digest });
   return { digest, receiptId: receipts[0].objectId };
 }
+
+/** Read-only reconciliation. Absence or an RPC error is unknown, not proof that
+ * a transfer failed. The caller must keep the reservation in that case. */
+export async function readJournaledVaultOutcome(input: { intentId: string; journal: VaultSubmissionJournal; transport: SuiTransport }): Promise<{ kind: "confirmed"; digest: string; receiptId: string } | { kind: "failed"; digest: string } | { kind: "unknown"; digest: string }> {
+  const row = await input.journal.load(input.intentId);
+  if (!row || row.intentId !== input.intentId) throw new Error("No durable signed submission exists");
+  const bytes = Uint8Array.from(Buffer.from(row.bytes, "base64"));
+  validateVaultTransaction(bytes, row.request, row.gasBudget);
+  const digest = TransactionDataBuilder.getDigestFromBytes(bytes);
+  if (digest !== row.digest) throw new Error("Stored transaction digest mismatch");
+  const key = await verifyTransactionSignature(bytes, row.signature);
+  if (key.toSuiAddress() !== normalizeSuiAddressStrict(row.request.delegate)) throw new Error("Stored signature mismatch");
+  if (!input.transport.getTransaction) return { kind: "unknown", digest };
+  try {
+    const result = decodeTransactionResult(await input.transport.getTransaction({ digest, include: { effects: true, objectTypes: true, events: true } }), "vault reconciliation");
+    if (result.digest !== digest) return { kind: "unknown", digest };
+    if (!result.status.success) return { kind: "failed", digest };
+    const expectedType = `${normalizeSuiAddressStrict(row.request.packageId)}::vault::Receipt`;
+    const objects = result.effects?.changedObjects;
+    const receipts = Array.isArray(objects) ? objects.filter((object) => object?.idOperation === "Created" && result.objectTypes?.[object.objectId] === expectedType) : [];
+    if (receipts.length !== 1 || typeof receipts[0].objectId !== "string") return { kind: "unknown", digest };
+    return { kind: "confirmed", digest, receiptId: receipts[0].objectId };
+  } catch { return { kind: "unknown", digest }; }
+}

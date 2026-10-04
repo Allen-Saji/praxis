@@ -6,7 +6,7 @@ const token = "test-service-token-".repeat(3);
 const scope = { organizationId: "org", assignmentId: "assignment", packageId: "0x1", vaultId: "0x2", agent: "0x3" };
 test("signer authenticates callers and does not return exception details", async () => {
   let provisions = 0;
-  const server = createVaultSignerServer({ provision: async () => { provisions += 1; return { address: "0x4" }; }, sign: async () => { throw new Error("private/path/secret-detail"); } }, token);
+  const server = createVaultSignerServer({ address: async () => ({ address: "0x4" }), provision: async () => { provisions += 1; return { address: "0x4" }; }, sign: async () => { throw new Error("private/path/secret-detail"); } }, token);
   server.listen(0, "127.0.0.1"); await once(server, "listening");
   const endpoint = server.address(); if (!endpoint || typeof endpoint === "string") throw new Error("No port");
   const base = `http://127.0.0.1:${endpoint.port}`;
