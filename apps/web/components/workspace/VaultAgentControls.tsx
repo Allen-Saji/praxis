@@ -8,7 +8,7 @@ import { Button } from "@/components/primitives/Button";
 const field = "focus-ring min-h-11 w-full rounded border border-[var(--border)] bg-[var(--bg)] px-3 text-sm";
 export function VaultAgentControls({ organizationId, assignmentId, owner, vaultId, packageId, agent, hasGrant }: { organizationId: string; assignmentId: string; owner: string; vaultId: string; packageId: string; agent: string; hasGrant: boolean | null }) {
   const account = useCurrentAccount(); const signer = useSignAndExecuteTransaction(); const router = useRouter();
-  const [pending, setPending] = useState(false); const [error, setError] = useState<string | null>(null); const [digest, setDigest] = useState<string | null>(null);
+  const [pending, setPending] = useState(false); const [error, setError] = useState<string | null>(null); const [digest, setDigest] = useState<string | null>(null); const [activated, setActivated] = useState(false);
   const connected = account?.address === owner;
   async function run(form: FormData | null) {
     setPending(true); setError(null); setDigest(null);
@@ -31,6 +31,16 @@ export function VaultAgentControls({ organizationId, assignmentId, owner, vaultI
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Agent authorization failed"); }
     finally { setPending(false); }
   }
+  async function activate() {
+    setPending(true); setError(null);
+    try {
+      const response = await fetch(`/api/workspaces/${organizationId}/assignments/${assignmentId}/activate-vault`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message ?? "Hosted access could not be enabled.");
+      setActivated(true); router.refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Activation failed"); }
+    finally { setPending(false); }
+  }
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void run(new FormData(event.currentTarget)); }
   return <div className="space-y-4">
     <details className="rounded border border-[var(--border)] p-4"><summary className="focus-ring cursor-pointer text-sm">{hasGrant ? "Update agent authorization" : "Authorize agent in your wallet"}</summary>
@@ -41,6 +51,7 @@ export function VaultAgentControls({ organizationId, assignmentId, owner, vaultI
         <Button variant="primary" disabled={!connected || pending || hasGrant === null}>Approve agent access</Button>
       </form>
     </details>
+    {hasGrant ? <Button variant="primary" disabled={pending || activated} onClick={() => void activate()}>{activated ? "Hosted access enabled" : "Verify and enable hosted access"}</Button> : null}
     {hasGrant ? <Button disabled={!connected || pending} onClick={() => void run(null)}>Revoke on-chain access</Button> : null}
     {error ? <p role="alert" className="text-sm text-[var(--risk-critical)]">{error}</p> : null}
     {pending ? <p role="status" className="text-sm">Preparing your wallet approval...</p> : null}

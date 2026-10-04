@@ -56,3 +56,12 @@ function findAddressOwner(value: unknown): string | null {
   }
   return null;
 }
+
+/** Vault limits are approved by the owner on chain and mirrored during activation. */
+export async function assertEditablePolicyScope(organizationId: string, actorId: string, scopeId: string) {
+  const overview = await workspaceRepository().workspaceOverview(organizationId, actorId);
+  const scope = overview?.scopes.find((item) => item.id === scopeId);
+  if (!overview || !scope) throw new HttpError(404, "POLICY_SCOPE_NOT_FOUND", "Policy scope was not found.");
+  const walletId = scope.walletId ?? overview.assignments.find((item) => item.id === scope.assignmentId)?.walletId;
+  if (overview.wallets.find((item) => item.id === walletId)?.adapterType === "delegated_vault") throw new HttpError(409, "VAULT_POLICY_REQUIRES_WALLET", "Approve vault limits with your wallet, then activate agent access to sync them.");
+}

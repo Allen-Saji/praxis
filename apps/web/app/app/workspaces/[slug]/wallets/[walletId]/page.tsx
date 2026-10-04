@@ -44,10 +44,11 @@ export default async function Wallet({ params }: { params: Promise<{ slug: strin
         <p className="mt-2 break-all font-mono text-xs text-[var(--text-low)]">Owner: {state.owner}</p>
       </Panel>
       {data.member.role === "owner" && data.session.user.primarySuiAddress === state.owner ? <Panel title="Manage your funds"><VaultOwnerControls packageId={packageId} vaultId={wallet.suiAddress} owner={state.owner} paused={state.paused} /></Panel> : null}
-      <Panel title="Agent access"><p className="text-sm text-[var(--text-mid)]">Hosted execution is not active for this vault yet. Owner funding, withdrawal and on-chain controls are available.</p></Panel>
+      <Panel title="Agent access"><p className="text-sm text-[var(--text-mid)]">Authorize an agent in your wallet, then verify and enable its hosted access. Transaction gas must be available to the delegate before activation.</p></Panel>
       {data.member.role === "owner" ? <Panel title="Add an agent"><WalletAgentSetup organizationId={data.organization.id} walletId={walletId} slug={slug} vaultMode agents={data.agents.filter((agent) => agent.status === "active" && !grants.some(({ row }) => row.agentId === agent.id))} /></Panel> : null}
       {grants.map(({ row, agent, grant, hasGrant }) => <Panel key={row.id} title={data.agents.find((item) => item.id === row.agentId)?.name ?? "Agent"}>
-        <p className="mb-4 text-sm text-[var(--text-mid)]">{grant ? `On-chain access ${grant.active ? "enabled" : "revoked"}. Expires ${new Date(Number(grant.expires_ms)).toISOString()}. Total spent: ${sui(grant.spent)} SUI.` : hasGrant === false ? "No on-chain authorization yet." : "Could not verify this agent's grant. Refresh before changing access."}</p>
+        <p className="mb-4 text-sm text-[var(--text-mid)]">{grant ? `On-chain access ${grant.active ? "enabled" : "revoked"}. Expires ${(BigInt(grant.expires_ms) <= 8640000000000000n ? new Date(Number(grant.expires_ms)).toISOString() : "beyond the supported date range")}. Total spent: ${sui(grant.spent)} SUI.` : hasGrant === false ? "No on-chain authorization yet." : "Could not verify this agent's grant. Refresh before changing access."}</p>
+        <Link className={action} href={`/app/workspaces/${slug}/agents/${row.agentId}`}>Agent credentials and activity</Link>
         {data.member.role === "owner" && data.session.user.primarySuiAddress === state.owner ? <VaultAgentControls organizationId={data.organization.id} assignmentId={row.id} packageId={packageId} vaultId={wallet.suiAddress} owner={state.owner} agent={agent} hasGrant={hasGrant} /> : null}
       </Panel>)}
     </WorkspaceFrame>;

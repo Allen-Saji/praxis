@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Transaction } from "@mysten/sui/transactions";
 import type { EvidencePort, SignerPort, SuiTransport } from "@allen-saji/praxis";
-import { DEPLOYMENTS } from "@allen-saji/praxis";
+import { DEPLOYMENTS, PraxisSdkError } from "@allen-saji/praxis";
 import { createActivePolicies, createFixture, openDb, type Fixture } from "../../../packages/db/test/support";
 import { assignments } from "../../../packages/db/src/schema";
 import { eq } from "drizzle-orm";
@@ -39,7 +39,57 @@ function request() {
 
 const integration = process.env.DATABASE_URL ? describe : describe.skip;
 
+function vaultRuntime() {
+  const base = runtime();
+  base.signer = { signTransaction: async () => { throw new Error("Legacy signer must never be used for vault payments"); } };
+  return { ...base, vault: {
+    simulate: vi.fn(async () => ({ success: true, balanceChanges: [], gasEstimate: 1n, walletBalance: 100n, riskScore: 0, risks: [], policyViolations: [], recommendation: "proceed" as const, rawEffects: {} })),
+    execute: vi.fn(async () => ({ digest: `vault-${crypto.randomUUID()}`, receiptId: "0x99" })),
+    recover: vi.fn(async (_id: string): Promise<{ kind: "confirmed"; digest: string; receiptId: string } | { kind: "unknown"; digest: string }> => ({ kind: "unknown", digest: "unknown" })),
+  } };
+}
+
 integration("hosted spend orchestration", () => {
+  it("uses the delegated adapter and keeps an idempotent replay unsigned", async () => {
+    const { createAndProcessSpend } = await import("./spend.server");
+    const isolated = await createFixture(opened[0]!.db);
+    await createActivePolicies(opened[0]!.db, isolated);
+    const ctx = { ...context(isolated), wallet: { ...context(isolated).wallet, adapterType: "delegated_vault" } };
+    const value = vaultRuntime(); const idempotencyKey = crypto.randomUUID();
+    const first = await createAndProcessSpend({ context: ctx, request: request(), idempotencyKey, runtime: value });
+    expect(first.intent.state).toBe("confirmed");
+    expect(value.vault.execute).toHaveBeenCalledOnce();
+    const replay = await createAndProcessSpend({ context: ctx, request: request(), idempotencyKey, runtime: value });
+    expect(replay.intent.id).toBe(first.intent.id);
+    expect(value.vault.execute).toHaveBeenCalledOnce();
+  });
+
+  it("records a vault policy block without pretending an audit transaction occurred", async () => {
+    const { createAndProcessSpend } = await import("./spend.server");
+    const isolated = await createFixture(opened[0]!.db);
+    await createActivePolicies(opened[0]!.db, isolated, { maxPerTxMist: 1n });
+    const value = vaultRuntime();
+    const result = await createAndProcessSpend({ context: { ...context(isolated), wallet: { ...context(isolated).wallet, adapterType: "delegated_vault" } }, request: { ...request(), amountMist: "2" }, idempotencyKey: crypto.randomUUID(), runtime: value });
+    expect(result.intent.state).toBe("blocked");
+    expect(result.intent.evidenceBlobId).toBeTruthy();
+    expect(result.intent.txDigest).toBeNull();
+    expect(value.vault.execute).not.toHaveBeenCalled();
+    expect(value.vault.simulate).not.toHaveBeenCalled();
+  });
+
+  it("reconciles a vault timeout using its recorded receipt without signing again", async () => {
+    const { createAndProcessSpend, reconcileIntents } = await import("./spend.server");
+    const isolated = await createFixture(opened[0]!.db);
+    await createActivePolicies(opened[0]!.db, isolated);
+    const value = vaultRuntime();
+    const digest = `vault-${crypto.randomUUID()}`;
+    value.vault.execute.mockRejectedValue(new PraxisSdkError("TRANSACTION_SUBMISSION_UNKNOWN", "timeout", { txDigest: digest }));
+    const result = await createAndProcessSpend({ context: { ...context(isolated), wallet: { ...context(isolated).wallet, adapterType: "delegated_vault" } }, request: request(), idempotencyKey: crypto.randomUUID(), runtime: value });
+    expect(result.intent.state).toBe("submission_unknown");
+    value.vault.recover.mockResolvedValue({ kind: "confirmed", digest, receiptId: "0x99" });
+    expect(await reconcileIntents(value, { organizationId: isolated.organizationId, intentId: result.intent.id })).toEqual([{ intentId: result.intent.id, state: "confirmed" }]);
+    expect(value.vault.execute).toHaveBeenCalledOnce();
+  });
   it("confirms once and returns the same intent on an idempotent replay", async () => {
     const { createAndProcessSpend } = await import("./spend.server");
     const key = `confirm-${crypto.randomUUID()}`;

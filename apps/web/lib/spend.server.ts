@@ -1,3 +1,4 @@
+import { createVaultExecutionAdapter } from "./vault-runtime.server";
 import { budgetViolation } from "./decision-reason";
 import { jsonSafeReport, simulationBlocks, toSdkPolicy } from "./spend-report";
 import "server-only";
@@ -9,27 +10,29 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { HttpError, executionLeaseRepository, intentRepository, reservationRepository, workspaceRepository } from "./control-plane.server";
 
 type Intent = NonNullable<Awaited<ReturnType<ReturnType<typeof intentRepository>["byId"]>>>;
-type Runtime = { transport: SuiTransport; signer: SignerPort; evidence: EvidencePort };
+type Runtime = { transport: SuiTransport; signer: SignerPort; evidence: EvidencePort; vault?: Pick<ReturnType<typeof createVaultExecutionAdapter>, "simulate" | "execute" | "recover"> };
 
 export type AgentContext = {
   credential: { id: string };
   assignment: { id: string };
   agent: { id: string };
-  wallet: { id: string; suiAddress: string; adapterType?: string };
+  wallet: { id: string; suiAddress: string; adapterType?: string; vaultOwnerAddress?: string | null; vaultPackageId?: string | null };
   organization: { id: string };
 };
 
 export type SpendRequest = { recipient: string; amountMist: string; coinType: "0x2::sui::SUI"; reasoning: { prompt: string; decision: string; model: string; metadata?: Record<string, unknown> }; privacy: "public" };
 
 export async function createAndProcessSpend(input: { context: AgentContext; idempotencyKey: string; request: SpendRequest; runtime?: Runtime }) {
-  if (input.context.wallet.adapterType === "delegated_vault") throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault execution is not enabled yet.");
+  if (input.context.wallet.adapterType === "delegated_vault" && !input.runtime?.vault && process.env.PRAXIS_VAULT_EXECUTION_ENABLED !== "true") throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault execution is not enabled yet.");
   const request = { ...input.request, recipient: normalizeSuiAddress(input.request.recipient), amountMist: parseMist(input.request.amountMist).toString() };
   const requestHash = hashCanonical(request);
   const purposeTag = stablePurposeTag({ organizationId: input.context.organization.id, assignmentId: input.context.assignment.id, idempotencyKey: input.idempotencyKey, requestHash });
   const intents = intentRepository();
   const created = await intents.createOrLoad({ organizationId: input.context.organization.id, assignmentId: input.context.assignment.id, walletId: input.context.wallet.id, agentId: input.context.agent.id, credentialId: input.context.credential.id, idempotencyKey: input.idempotencyKey, requestHash, purposeTag, recipient: request.recipient, amountMist: BigInt(request.amountMist), reasoningJson: request.reasoning });
   if (created.kind === "conflict") return { kind: "conflict" as const, intent: created.intent };
-  const intent = await processSpendIntent(created.intent, input.runtime ?? defaultRuntime(), input.context.wallet.suiAddress);
+  if (["confirmed", "blocked", "failed", "expired"].includes(created.intent.state)) return { kind: created.kind, intent: created.intent };
+  const runtime = input.runtime ?? runtimeForWallet(input.context.wallet, { organizationId: input.context.organization.id, assignmentId: input.context.assignment.id, agentId: input.context.agent.id });
+  const intent = await processSpendIntent(created.intent, runtime, input.context.wallet.suiAddress);
   return { kind: created.kind, intent };
 }
 
@@ -59,7 +62,7 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
     try {
       const snapshot = policySnapshot(intent);
       const sender = walletAddress ?? initialWalletAddress(initial, intent);
-      report = await retrySimulation(() => simulateSuiTransfer({ transport: runtime.transport, transaction: buildSuiTransferTransaction({ sender, recipient: intent.recipient, amount: BigInt(intent.amountMist) }), sender, recipient: intent.recipient, amount: BigInt(intent.amountMist), policy: toSdkPolicy(snapshot) }));
+      report = await retrySimulation(() => runtime.vault ? runtime.vault.simulate(intent, toSdkPolicy(snapshot)) : simulateSuiTransfer({ transport: runtime.transport, transaction: buildSuiTransferTransaction({ sender, recipient: intent.recipient, amount: BigInt(intent.amountMist) }), sender, recipient: intent.recipient, amount: BigInt(intent.amountMist), policy: toSdkPolicy(snapshot) }));
     } catch (error) {
       const code = error instanceof PraxisSdkError ? error.code : "SIMULATION_FAILED";
       const blockedReport = { success: false, balanceChanges: [], gasEstimate: "0", walletBalance: "0", riskScore: 100, risks: [{ level: "critical", code, message: "Simulation could not be safely completed" }], policyViolations: [], recommendation: "abort", rawEffects: null };
@@ -95,6 +98,7 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
     const pending = await intents.transition(intent.id, "evidence_published", intent.stateVersion, "abort_record_pending", { organizationId: intent.organizationId });
     if (!pending) return (await intents.byId(intent.organizationId, intent.id))!;
     intent = pending;
+    if (runtime.vault) return (await intents.transition(intent.id, "abort_record_pending", intent.stateVersion, "blocked", { organizationId: intent.organizationId, outcome: "blocked" })) ?? intent;
     let abortDigest: string | undefined;
     try {
       const result = await recordBlockedSuiIntent({ transport: runtime.transport, signer: runtime.signer, deployment: DEPLOYMENTS.testnet, agent: agentAddress(intent.agentId), recipient: intent.recipient, amount: BigInt(intent.amountMist), blobId: intent.evidenceBlobId!, reason: abortReason(intent.abortReason), riskScore: intent.riskScore ?? 100 });
@@ -130,7 +134,7 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
   intent = signing;
   let completedSubmission: { digest: string; receiptId?: string } | null = null;
   try {
-    const execution = await executeApprovedSuiSpend({ transport: runtime.transport, signer: runtime.signer, deployment: DEPLOYMENTS.testnet, agent: agentAddress(intent.agentId), recipient: intent.recipient, amount: BigInt(intent.amountMist), coinType: intent.coinType, blobId: intent.evidenceBlobId!, sealPolicyId: "", riskScore: intent.riskScore ?? 0, simulationPassed: true, purposeTag: intent.purposeTag });
+    const execution = runtime.vault ? await runtime.vault.execute(intent, toSdkPolicy(policySnapshot(intent))) : await executeApprovedSuiSpend({ transport: runtime.transport, signer: runtime.signer, deployment: DEPLOYMENTS.testnet, agent: agentAddress(intent.agentId), recipient: intent.recipient, amount: BigInt(intent.amountMist), coinType: intent.coinType, blobId: intent.evidenceBlobId!, sealPolicyId: "", riskScore: intent.riskScore ?? 0, simulationPassed: true, purposeTag: intent.purposeTag });
     completedSubmission = execution;
     const submitted = await intents.transition(intent.id, "signing", intent.stateVersion, "submitted", { organizationId: intent.organizationId, txDigest: execution.digest, receiptId: execution.receiptId });
     if (!submitted) throw new Error("submission state race");
@@ -168,6 +172,13 @@ export async function processSpendIntent(initial: Intent, runtime: Runtime, wall
   }
 }
 
+function runtimeForWallet(wallet: AgentContext["wallet"], identity: { organizationId: string; assignmentId: string; agentId: string }, recovery = false): Runtime {
+  if (wallet.adapterType !== "delegated_vault") return defaultRuntime();
+  if ((!recovery && process.env.PRAXIS_VAULT_EXECUTION_ENABLED !== "true") || !wallet.vaultPackageId || !wallet.vaultOwnerAddress) throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault execution is not enabled yet.");
+  const vault = createVaultExecutionAdapter({ ...identity, vaultId: wallet.suiAddress, owner: wallet.vaultOwnerAddress, packageId: wallet.vaultPackageId });
+  return { transport: vault.transport, vault, signer: { signTransaction: async () => { throw new Error("Vaults cannot use the legacy signer path"); } }, evidence: new WalrusStore({ ...WALRUS_ENDPOINTS.testnet, mode: "hosted", timeoutMs: 60_000, maxBodyBytes: 64 * 1024 }) };
+}
+
 export function defaultRuntime(): Runtime {
   if ((process.env.PRAXIS_NETWORK ?? "testnet") !== "testnet") throw new Error("Hosted control plane supports Testnet only");
   const key = process.env.PRAXIS_OPERATOR_KEY;
@@ -202,24 +213,48 @@ async function retrySimulation<T>(operation: () => Promise<T>): Promise<T> { let
 
 export function safeIntent(intent: Intent) { return { intentId: intent.id, state: intent.state, outcome: intent.outcome, recipient: intent.recipient, amountMist: intent.amountMist, walletPolicyVersionId: intent.walletPolicyVersionId, assignmentPolicyVersionId: intent.assignmentPolicyVersionId, effectivePolicyHash: intent.effectivePolicyHash, riskScore: intent.riskScore, recommendation: intent.recommendation, abortReason: intent.abortReason, budgetViolation: budgetViolation(intent.abortReason), txDigest: intent.txDigest, receiptId: intent.receiptId, walrusBlobId: intent.evidenceBlobId, createdAt: intent.createdAt, completedAt: intent.completedAt }; }
 
-export async function reconcileIntents(runtime: Runtime = defaultRuntime()) {
+export async function reconcileIntents(runtime?: Runtime, scope?: { organizationId: string; intentId: string }) {
   const intents = intentRepository();
   const reservations = reservationRepository();
   const leases = executionLeaseRepository();
   const rows = await intents.recoverable();
   const results: Array<{ intentId: string; state: string }> = [];
   for (const row of rows) {
+    if (scope && (row.organizationId !== scope.organizationId || row.id !== scope.intentId)) continue;
+    const boundWallet = await workspaceRepository().walletById(row.organizationId, row.walletId);
+    if (!boundWallet) { results.push({ intentId: row.id, state: row.state }); continue; }
+    const selected = runtime ?? runtimeForWallet(boundWallet, { organizationId: row.organizationId, assignmentId: row.assignmentId, agentId: row.agentId }, true);
+    if (selected.vault && ["signing", "submitted", "submission_unknown"].includes(row.state)) {
+      const outcome = await selected.vault.recover(row.id).catch(() => null);
+      if (!outcome || (row.txDigest && row.txDigest !== outcome.digest)) { results.push({ intentId: row.id, state: row.state }); continue; }
+      let current = row;
+      if (current.state === "signing") current = (await intents.transition(current.id, "signing", current.stateVersion, "submission_unknown", { organizationId: current.organizationId, txDigest: outcome.digest })) ?? current;
+      if (outcome.kind === "unknown") { results.push({ intentId: current.id, state: current.state }); continue; }
+      const evidence = { kind: "chain_scan" as const, intentId: row.id, purposeTag: row.purposeTag, finalizedCheckpoint: outcome.digest, finalized: true as const };
+      const reservation = await intents.reservationFor(row.organizationId, row.id);
+      if (!reservation || current.state === "signing") { results.push({ intentId: current.id, state: current.state }); continue; }
+      if (outcome.kind === "confirmed") {
+        if (current.state === "submission_unknown") current = (await intents.transition(current.id, "submission_unknown", current.stateVersion, "submitted", { organizationId: current.organizationId, txDigest: outcome.digest, receiptId: outcome.receiptId, guard: { kind: "submitted", outcome: "submitted", txDigest: outcome.digest, checkedAt: new Date(), evidence } })) ?? current;
+        await reservations.commit({ organizationId: row.organizationId, reservationId: reservation.id, proof: { kind: "confirmed", outcome: "confirmed", txDigest: outcome.digest, receiptId: outcome.receiptId, checkedAt: new Date(), evidence } });
+      } else {
+        await reservations.releaseReconciledUnknown({ organizationId: row.organizationId, reservationId: reservation.id, proof: { kind: "definite_failure", outcome: "failed", failureCode: "CHAIN_EXECUTION_FAILED", txDigest: outcome.digest, checkedAt: new Date(), evidence } });
+      }
+      const lease = await leases.active(row.organizationId, row.walletId);
+      if (lease && lease.intentId === row.id) await leases.release({ organizationId: row.organizationId, leaseId: lease.id, workerId: lease.workerId });
+      results.push({ intentId: row.id, state: (await intents.byId(row.organizationId, row.id))!.state });
+      continue;
+    }
     if (row.state === "evidence_pending") {
       const wallet = await workspaceRepository().walletById(row.organizationId, row.walletId);
       if (wallet) {
-        const resumed = await processSpendIntent(row, runtime, wallet.suiAddress);
+        const resumed = await processSpendIntent(row, selected, wallet.suiAddress);
         results.push({ intentId: resumed.id, state: resumed.state });
       }
       continue;
     }
     if (row.state === "abort_record_pending") {
       if (row.txDigest) {
-        const chain = await queryTransaction(runtime.transport, row.txDigest);
+        const chain = await queryTransaction(selected.transport, row.txDigest);
         if (chain === "confirmed") {
           const blocked = await intents.transition(row.id, "abort_record_pending", row.stateVersion, "blocked", { organizationId: row.organizationId, outcome: "blocked", txDigest: row.txDigest });
           results.push({ intentId: row.id, state: blocked?.state ?? row.state });
@@ -228,12 +263,12 @@ export async function reconcileIntents(runtime: Runtime = defaultRuntime()) {
         if (chain === "unknown") { results.push({ intentId: row.id, state: row.state }); continue; }
       }
       const wallet = await workspaceRepository().walletById(row.organizationId, row.walletId);
-      const resumed = wallet ? await resumeAbortRecord(row, runtime) : row;
+      const resumed = wallet ? await resumeAbortRecord(row, selected) : row;
       results.push({ intentId: row.id, state: resumed.state });
       continue;
     }
     if ((row.state === "submitted" || row.state === "submission_unknown") && row.txDigest) {
-      const chain = await queryTransaction(runtime.transport, row.txDigest);
+      const chain = await queryTransaction(selected.transport, row.txDigest);
       const reservation = await intents.reservationFor(row.organizationId, row.id);
       const lease = await leases.active(row.organizationId, row.walletId);
       if (chain === "confirmed" && reservation) {
@@ -252,6 +287,7 @@ export async function reconcileIntents(runtime: Runtime = defaultRuntime()) {
 
 async function resumeAbortRecord(intent: Intent, runtime: Runtime): Promise<Intent> {
   const intents = intentRepository();
+  if (runtime.vault) return (await intents.transition(intent.id, "abort_record_pending", intent.stateVersion, "blocked", { organizationId: intent.organizationId, outcome: "blocked" })) ?? intent;
   let abortDigest: string | undefined;
   try {
     const result = await recordBlockedSuiIntent({ transport: runtime.transport, signer: runtime.signer, deployment: DEPLOYMENTS.testnet, agent: agentAddress(intent.agentId), recipient: intent.recipient, amount: BigInt(intent.amountMist), blobId: intent.evidenceBlobId!, reason: abortReason(intent.abortReason), riskScore: intent.riskScore ?? 100 });

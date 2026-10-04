@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireWorkspaceOverview } from "@/lib/workspace-view.server";
 import { PolicyEditor, PolicySummary } from "@/components/workspace/PolicyEditor";
 import { Panel, WorkspaceFrame } from "@/components/workspace/WorkspaceFrame";
@@ -9,6 +9,8 @@ export default async function PolicyPage({ params }: { params: Promise<{ slug: s
   const versions = data.policyVersions.filter((item) => item.scope.id === scope.id).map((item) => item.version); const active = versions.find((item) => item.id === scope.currentVersionId) ?? null;
   const name = scope.walletId ? data.wallets.find((item) => item.id === scope.walletId)?.label : data.agents.find((item) => data.assignments.some((assignment) => assignment.id === scope.assignmentId && assignment.agentId === item.id))?.name;
   const assignment = data.assignments.find((item) => item.id === scope.assignmentId);
+  const wallet = data.wallets.find((item) => item.id === (scope.walletId ?? assignment?.walletId));
+  if (wallet?.adapterType === "delegated_vault") redirect(`/app/workspaces/${slug}/wallets/${wallet.id}`);
   const walletScope = assignment ? data.scopes.find((item) => item.walletId === assignment.walletId) : null;
   const walletPolicy = data.policyVersions.find(({ version }) => version.id === walletScope?.currentVersionId)?.version;
   return <WorkspaceFrame slug={slug} name={data.organization.name} title={`${name ?? "Agent"} limits`} description="Review changes before activating them.">

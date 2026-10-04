@@ -1,4 +1,5 @@
 import "server-only";
+import { createVaultExecutionAdapter } from "./vault-runtime.server";
 import { GrpcWebFetchTransport, SuiGrpcClient } from "@mysten/sui/grpc";
 import { evaluatePolicies, normalizeSuiAddress, parseMist } from "@allen-saji/praxis-control-plane";
 import type { PreviewIdentity, SpendingPreviewRepository } from "@allen-saji/praxis-db";
@@ -19,7 +20,7 @@ function previewDependencies(): PreviewDependencies {
 }
 
 export async function previewSpend(input: { context: AgentContext; request: SpendRequest }, dependencies?: PreviewDependencies) {
-  if (input.context.wallet.adapterType === "delegated_vault") throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault preview is not enabled yet.");
+  if (input.context.wallet.adapterType === "delegated_vault" && process.env.PRAXIS_VAULT_EXECUTION_ENABLED !== "true") throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault preview is not enabled yet.");
   const deps = dependencies ?? previewDependencies();
   const { context } = input;
   const request = { ...input.request, recipient: normalizeSuiAddress(input.request.recipient), amountMist: parseMist(input.request.amountMist).toString() };
@@ -43,11 +44,12 @@ export async function previewSpend(input: { context: AgentContext; request: Spen
     effectivePolicyHash: policies.snapshot.effectivePolicyHash,
     budgets: { wallet: { day: budget("wallet", "day"), month: budget("wallet", "month") }, agent: { day: budget("assignment", "day"), month: budget("assignment", "month") } },
     policyViolations: evaluation.violations,
-    notice: "Preview only. No funds reserved or transferred. Execution checks current access, limits and simulation again.",
+    notice: context.wallet.adapterType === "delegated_vault" ? "Preview only. Budget figures track Praxis requests; simulation checks current on-chain limits. No funds reserved or transferred." : "Preview only. No funds reserved or transferred. Execution checks current access, limits and simulation again.",
   };
   if (!evaluation.allowed) return { ...base, recommendation: "abort" as const, simulationStatus: "skipped" as const, simulationReport: null };
   try {
-    const report = await simulateSuiTransfer({ transport: deps.transport, transaction: buildSuiTransferTransaction({ sender: snapshot.address, recipient: request.recipient, amount: BigInt(request.amountMist) }), sender: snapshot.address, recipient: request.recipient, amount: BigInt(request.amountMist), policy: toSdkPolicy(policies.snapshot) });
+    const vault = context.wallet.adapterType === "delegated_vault" ? createVaultExecutionAdapter({ organizationId: context.organization.id, assignmentId: context.assignment.id, agentId: context.agent.id, vaultId: context.wallet.suiAddress, owner: context.wallet.vaultOwnerAddress ?? "", packageId: context.wallet.vaultPackageId ?? "" }) : null;
+    const report = vault ? await vault.simulate({ id: "advisory-preview", recipient: request.recipient, amountMist: request.amountMist, evidenceBlobId: null }, toSdkPolicy(policies.snapshot)) : await simulateSuiTransfer({ transport: deps.transport, transaction: buildSuiTransferTransaction({ sender: snapshot.address, recipient: request.recipient, amount: BigInt(request.amountMist) }), sender: snapshot.address, recipient: request.recipient, amount: BigInt(request.amountMist), policy: toSdkPolicy(policies.snapshot) });
     return { ...base, recommendation: simulationBlocks(report, evaluation.effectiveRiskScore) ? "abort" as const : report.recommendation, simulationStatus: "completed" as const, simulationReport: jsonSafeReport(report) };
   } catch {
     // No transport errors or internal RPC details are exposed to the agent.
