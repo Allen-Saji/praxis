@@ -1,0 +1,15 @@
+{
+  "network": "testnet",
+  "packageId": "0x4ba84cf42c35f70c7c09a3e434aa0c9cbedd797714bbb0c77be41d2480880412",
+  "upgradeCapId": "0x4251bc74b85f5becd146ef5974a122be523eb68749504c5339fafae83dda3457",
+  "publisher": "0x30eacee0d560d99502f7d2b5ff7ffc2573d5ccfb03a5c76a25d73d3c53d3e159",
+  "publishDigest": "FpUsj9JjAAAGJzfcR3Pz84tzreTmZZi4C5Mt1P8EGRdG",
+  "gasBudgetMist": "100000000",
+  "netGasMist": "46632680",
+  "sourceCommit": "35d903df1975176e68bcc1293e43c279910445a6",
+  "verifiedAt": "2026-10-04T11:37:00.076Z",
+  "modules": {
+    "budget": "d62a7d4f73aa7d02044753d1f2c69676f9c587fca3c4ede1f229463014a1ec33",
+    "vault": "855991c56077f43e354f1b7c03db3c827251395db4d2fe66da4859d4951817cb"
+  }
+}
