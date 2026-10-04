@@ -11,3 +11,4 @@ export * from "./repositories/audit";
 export * from "./repositories/leases";
 export * from "./errors";
 export * from "./policy";
+export * from "./repositories/vault-submissions";

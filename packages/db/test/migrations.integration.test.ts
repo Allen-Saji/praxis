@@ -41,8 +41,8 @@ describe("PostgreSQL migrations", () => {
     expect(secondRows).toEqual(firstRows);
     expect(await second.client`SELECT count(*)::int AS count FROM pg_class WHERE relname = 'organizations'`).toEqual([{ count: 1 }]);
     // Simulate a database that applied 0004 before the late protections were
-    // added to that migration. Removing only the temporary 0005 journal row
-    // lets the real migrator exercise the additive upgrade path.
+    // added to that migration. Replay the explicit repair migration without
+    // assuming it is the newest entry in an evolving migration journal.
     await second.client`DROP TRIGGER IF EXISTS spend_intent_policy_tenant_guard ON spend_intents`;
     await second.client`DROP TRIGGER IF EXISTS audit_events_metadata_safe ON audit_events`;
     await second.client`CREATE OR REPLACE FUNCTION reject_audit_sensitive_metadata() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -57,7 +57,12 @@ describe("PostgreSQL migrations", () => {
       END;
     $$`;
     await second.client`ALTER TABLE spend_intents DROP CONSTRAINT IF EXISTS intent_reasoning_keys_check`;
-    await second.client`DELETE FROM drizzle.__drizzle_migrations WHERE id = ${firstRows.at(-1)?.id}`;
+    const { readFile, readdir } = await import("node:fs/promises");
+    const migrationFolder = new URL("../migrations/", import.meta.url);
+    const repairName = (await readdir(migrationFolder)).find((name) => name.startsWith("0007_") && name.endsWith(".sql"));
+    if (!repairName) throw new Error("Integrity repair migration is missing");
+    const repair = await readFile(new URL(repairName, migrationFolder), "utf8");
+    for (const statement of repair.split("--> statement-breakpoint")) if (statement.trim()) await second.client.unsafe(statement);
     await migrate(second.db, { migrationsFolder: new URL("../migrations", import.meta.url).pathname });
     const upgradedRows = await second.client`SELECT id FROM drizzle.__drizzle_migrations ORDER BY id`;
     expect(upgradedRows).toHaveLength(journal.entries.length);

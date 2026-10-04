@@ -30,3 +30,27 @@ export const budgetReservations = pgTable("budget_reservations", { id: id(), org
 export const walletExecutionLeases = pgTable("wallet_execution_leases", { id: id(), organizationId: uuid("organization_id").notNull().references(() => organizations.id), walletId: uuid("wallet_id").notNull().references(() => wallets.id), intentId: uuid("intent_id").notNull().references(() => spendIntents.id), workerId: text("worker_id").notNull(), acquiredAt: timestamp("acquired_at", { withTimezone: true }).defaultNow().notNull(), expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), releasedAt: timestamp("released_at", { withTimezone: true }) }, (t) => [unique("wallet_lease_identity_unique").on(t.organizationId, t.id), uniqueIndex("wallet_one_active_lease").on(t.walletId).where(sql`${t.releasedAt} is null`), check("wallet_lease_worker_check", sql`length(btrim(${t.workerId})) between 1 and 128`), check("wallet_lease_expiry_check", sql`${t.expiresAt} > ${t.acquiredAt}`), foreignKey({ columns: [t.organizationId, t.walletId], foreignColumns: [wallets.organizationId, wallets.id], name: "wallet_execution_lease_wallet_tenant_fk" }), foreignKey({ columns: [t.organizationId, t.intentId, t.walletId], foreignColumns: [spendIntents.organizationId, spendIntents.id, spendIntents.walletId], name: "wallet_execution_lease_intent_tenant_fk" })]);
 export const auditEvents = pgTable("audit_events", { id: id(), organizationId: uuid("organization_id").references(() => organizations.id), actorType: text("actor_type").notNull(), actorId: text("actor_id"), eventType: text("event_type").notNull(), subjectType: text("subject_type").notNull(), subjectId: text("subject_id").notNull(), metadataJson: jsonb("metadata_json").notNull(), createdAt: createdAt() }, (t) => [index("audit_org_created_index").on(t.organizationId, t.createdAt)]);
 export const organizationRelations = relations(organizations, ({ many }) => ({ wallets: many(wallets), agents: many(agents) }));
+
+// Signed transaction envelopes are server-only recovery material, not keys.
+export const vaultSubmissions = pgTable("vault_submissions", {
+  intentId: uuid("intent_id").primaryKey(),
+  organizationId: uuid("organization_id").notNull(),
+  network: network("network").default("testnet").notNull(),
+  packageId: text("package_id").notNull(),
+  vaultId: text("vault_id").notNull(),
+  agentAddress: text("agent_address").notNull(),
+  sequence: money("sequence").notNull(),
+  digest: text("digest").notNull().unique(),
+  transactionBytes: text("transaction_bytes").notNull(),
+  signature: text("signature").notNull(),
+  requestJson: jsonb("request_json").notNull(),
+  gasBudget: money("gas_budget").notNull(),
+  createdAt: createdAt(),
+}, (t) => [
+  foreignKey({ columns: [t.organizationId, t.intentId], foreignColumns: [spendIntents.organizationId, spendIntents.id], name: "vault_submission_intent_tenant_fk" }),
+  unique("vault_submission_sequence_unique").on(t.network, t.packageId, t.vaultId, t.agentAddress, t.sequence),
+  check("vault_submission_addresses_check", sql`${t.packageId} ~ '^0x[0-9a-f]{64}$' and ${t.vaultId} ~ '^0x[0-9a-f]{64}$' and ${t.agentAddress} ~ '^0x[0-9a-f]{64}$'`),
+  check("vault_submission_sequence_check", sql`${t.sequence} >= 0 and ${t.sequence} <= 18446744073709551615`),
+  check("vault_submission_gas_check", sql`${t.gasBudget} > 0 and ${t.gasBudget} <= 18446744073709551615`),
+  check("vault_submission_payload_check", sql`length(${t.transactionBytes}) between 1 and 262144 and length(${t.signature}) between 1 and 4096 and length(${t.digest}) between 1 and 128`),
+]);

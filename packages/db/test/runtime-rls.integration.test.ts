@@ -55,7 +55,7 @@ describe("hosted runtime RLS", () => {
         await tx.execute(sql.raw(setup));
         await tx.execute(sql.raw(setup)); // Setup is safe to rerun after migrations.
         const policies = await tx.execute(sql`SELECT roles FROM pg_policies WHERE policyname = 'praxis_server_access'`);
-        expect(policies).toHaveLength(18);
+        expect(policies).toHaveLength(19);
         expect(policies.every((row) => JSON.stringify(row.roles) === '["praxis_app"]')).toBe(true);
 
         await tx.execute(sql`SET LOCAL ROLE praxis_app`);

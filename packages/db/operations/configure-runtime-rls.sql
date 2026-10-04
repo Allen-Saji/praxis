@@ -25,7 +25,7 @@ BEGIN
     'policy_scopes', 'policy_versions', 'policy_recipient_rules',
     'agent_credentials', 'spend_intents', 'budget_reservations',
     'wallet_budget_counters', 'assignment_budget_counters',
-    'audit_events', 'wallet_execution_leases'
+    'audit_events', 'wallet_execution_leases', 'vault_submissions'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', table_name);
     IF EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public'
@@ -39,3 +39,7 @@ BEGIN
   END LOOP;
 END
 $runtime_rls$;
+
+-- Recovery envelopes must not be rewritten or removed by the web runtime.
+REVOKE UPDATE, DELETE, TRUNCATE ON public.vault_submissions FROM praxis_app;
+GRANT SELECT, INSERT ON public.vault_submissions TO praxis_app;
