@@ -54,4 +54,5 @@ export type {
   WalletAdapter,
   ReasoningBlob,
 } from "./types";
-export { buildCreateVault, buildDepositVault, buildWithdrawVault, buildSetVaultPolicy, buildSetVaultPaused, buildAuthorizeVaultAgent, buildRevokeVaultAgent, buildVaultSpend, type VaultTarget, type VaultPolicy, type VaultGrant, type VaultSpend } from "./vault";
+export { buildSetVaultWindowLimits, buildCreateVault, buildDepositVault, buildWithdrawVault, buildSetVaultPolicy, buildSetVaultPaused, buildAuthorizeVaultAgent, buildRevokeVaultAgent, buildVaultSpend, type VaultTarget, type VaultPolicy, type VaultGrant, type VaultSpend } from "./vault";
+export { validateVaultTransaction, prepareVaultSubmission, submitJournaledVaultPayment, type VaultSubmission, type VaultSubmissionJournal } from "./vault-execution";

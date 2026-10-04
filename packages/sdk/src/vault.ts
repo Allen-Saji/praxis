@@ -1,4 +1,4 @@
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, type TransactionArgument } from "@mysten/sui/transactions";
 import { normalizeSuiAddressStrict } from "./address";
 
 /** Explicit unpublished-vault configuration. Never falls back to demo ids. */
@@ -93,5 +93,18 @@ export function buildVaultSpend(input: VaultSpend): Transaction {
   const evidence = new TextEncoder().encode(input.evidence);
   if (!evidence.length || evidence.length > 128) throw new Error("evidence must contain 1 to 128 UTF-8 bytes");
   tx.moveCall({ target, arguments: [vault, tx.pure.address(normalizeSuiAddressStrict(input.agent)), tx.pure.address(normalizeSuiAddressStrict(input.recipient)), tx.pure.u64(u64(input.amount, "amount", true)), tx.pure.u64(u64(input.sequence, "sequence")), tx.pure.u64(u64(input.vaultVersion, "vaultVersion")), tx.pure.u64(u64(input.grantVersion, "grantVersion")), tx.pure.vector("u8", [...evidence]), tx.object("0x6")] });
+  return tx;
+}
+
+
+export function buildSetVaultWindowLimits(input: VaultTarget & { owner: string; daily: bigint; monthly: bigint; agent?: string }): Transaction {
+  const { tx, target, vault } = call(input, input.agent === undefined ? "set_window_limits" : "set_agent_window_limits", input.owner);
+  u64(input.daily, "daily", true);
+  u64(input.monthly, "monthly", true);
+  if (input.monthly < input.daily) throw new Error("monthly must cover daily");
+  const args: TransactionArgument[] = [vault];
+  if (input.agent !== undefined) args.push(tx.pure.address(normalizeSuiAddressStrict(input.agent)));
+  args.push(tx.pure.u64(input.daily), tx.pure.u64(input.monthly));
+  tx.moveCall({ target, arguments: args });
   return tx;
 }
