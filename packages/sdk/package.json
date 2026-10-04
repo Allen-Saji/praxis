@@ -35,6 +35,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./vault": {
+      "types": "./dist/vault.d.ts",
+      "import": "./dist/vault.js",
+      "require": "./dist/vault.cjs"
+    },
+    "./testnet-signer": {
+      "types": "./dist/node-delegate.d.ts",
+      "import": "./dist/node-delegate.js",
+      "require": "./dist/node-delegate.cjs"
     }
   },
   "files": [
