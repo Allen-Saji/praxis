@@ -37,6 +37,33 @@ export class WorkspaceRepository {
     });
   }
 
+  /** Call only after verifying the configured contract's live shared vault.
+   * Rechecks actor ownership locally and leaves execution disabled. */
+  async registerVault(input: { organizationId: string; actorId: string; label: string; vaultId: string; ownerAddress: string; packageId: string }) {
+    const vaultId = normalizeAddress(input.vaultId);
+    const ownerAddress = normalizeAddress(input.ownerAddress);
+    const packageId = normalizeAddress(input.packageId);
+    return this.db.transaction(async (tx) => {
+      await this.requireRole(tx as Db, input.organizationId, input.actorId);
+      const [actor] = await tx.select().from(schema.users).where(eq(schema.users.id, input.actorId)).limit(1);
+      if (actor?.primarySuiAddress !== ownerAddress) throw new DbDomainError("VAULT_OWNER_MISMATCH", "The connected account does not own this vault");
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${vaultId}, 0))`);
+      const [existing] = await tx.select().from(schema.wallets).where(and(eq(schema.wallets.network, "testnet"), eq(schema.wallets.suiAddress, vaultId))).limit(1);
+      if (existing) {
+        if (existing.organizationId !== input.organizationId || existing.adapterType !== "delegated_vault" || existing.vaultOwnerAddress !== ownerAddress || existing.vaultPackageId !== packageId || existing.archivedAt) throw new DbDomainError("VAULT_ALREADY_REGISTERED", "Vault is already registered");
+        const [scope] = await tx.select().from(schema.policyScopes).where(and(eq(schema.policyScopes.organizationId, input.organizationId), eq(schema.policyScopes.walletId, existing.id), eq(schema.policyScopes.scopeType, "wallet"))).limit(1);
+        if (!scope) throw new DbDomainError("POLICY_SCOPE_NOT_FOUND", "Vault policy scope is missing");
+        return { wallet: existing, policyScope: scope };
+      }
+      const [wallet] = await tx.insert(schema.wallets).values({ organizationId: input.organizationId, label: input.label.trim(), suiAddress: vaultId, adapterType: "delegated_vault", adapterRef: `sui:${packageId}:${vaultId}`, vaultOwnerAddress: ownerAddress, vaultPackageId: packageId, executionStatus: "disabled" }).returning();
+      if (!wallet) throw new DbDomainError("WALLET_CREATE_FAILED", "Vault registration failed");
+      const [scope] = await tx.insert(schema.policyScopes).values({ organizationId: input.organizationId, scopeType: "wallet", walletId: wallet.id }).returning();
+      if (!scope) throw new DbDomainError("POLICY_SCOPE_CREATE_FAILED", "Vault policy scope was not created");
+      await appendAuditEvent(tx, { organizationId: input.organizationId, actorType: "user", actorId: input.actorId, eventType: "vault_registered", subjectType: "wallet", subjectId: wallet.id, metadataJson: { walletId: wallet.id, scopeId: scope.id } });
+      return { wallet, policyScope: scope };
+    });
+  }
+
   async setWalletStatus(input: { organizationId: string; actorId: string; walletId: string; status: "disabled" | "enabled" | "suspended" }) {
     return this.db.transaction(async (tx) => {
       await this.requireRole(tx as Db, input.organizationId, input.actorId);
@@ -263,6 +290,16 @@ export class WorkspaceRepository {
     if (!decision) return null;
     const [reservation] = await this.db.select().from(schema.budgetReservations).where(and(eq(schema.budgetReservations.organizationId, organizationId), eq(schema.budgetReservations.intentId, intentId))).limit(1);
     return { ...membership, decision, reservation: reservation ?? null };
+  }
+
+  async assignmentExecutionForMember(organizationId: string, userId: string, assignmentId: string) {
+    const member = await this.member(organizationId, userId);
+    if (!member) return null;
+    const [row] = await this.db.select({ assignment: schema.assignments, wallet: schema.wallets, agent: schema.agents }).from(schema.assignments)
+      .innerJoin(schema.wallets, and(eq(schema.wallets.id, schema.assignments.walletId), eq(schema.wallets.organizationId, organizationId)))
+      .innerJoin(schema.agents, and(eq(schema.agents.id, schema.assignments.agentId), eq(schema.agents.organizationId, organizationId)))
+      .where(and(eq(schema.assignments.id, assignmentId), eq(schema.assignments.organizationId, organizationId), isNull(schema.wallets.archivedAt))).limit(1);
+    return row ? { ...row, member } : null;
   }
 
   async walletById(organizationId: string, walletId: string) {

@@ -1,0 +1,4 @@
+ALTER TABLE "wallets" DROP CONSTRAINT "wallet_adapter_type_check";--> statement-breakpoint
+ALTER TABLE "wallets" ADD COLUMN "vault_owner_address" text;--> statement-breakpoint
+ALTER TABLE "wallets" ADD COLUMN "vault_package_id" text;--> statement-breakpoint
+ALTER TABLE "wallets" ADD CONSTRAINT "wallet_adapter_type_check" CHECK (("wallets"."adapter_type" = 'demo_keypair' and "wallets"."vault_owner_address" is null and "wallets"."vault_package_id" is null) or ("wallets"."adapter_type" = 'delegated_vault' and "wallets"."vault_owner_address" is not null and "wallets"."vault_package_id" is not null and "wallets"."vault_owner_address" ~ '^0x[0-9a-f]{64}$' and "wallets"."vault_package_id" ~ '^0x[0-9a-f]{64}$'));

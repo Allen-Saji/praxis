@@ -64,6 +64,13 @@
       "when": 1791111244360,
       "tag": "0008_wooden_mandarin",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791111508043,
+      "tag": "0009_living_calypso",
+      "breakpoints": true
     }
   ]
 }
