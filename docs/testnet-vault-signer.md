@@ -1,8 +1,9 @@
 # Isolated Testnet vault signer
 
-This service is under development. Hosted vault payment orchestration and live
-acceptance are not complete. Do not configure the public application to accept
-funds on the basis of this document alone. Mainnet is not supported.
+This service is a Testnet prototype. Contract and local isolated-key acceptance
+passed; public HTTP hosting and browser onboarding still need acceptance.
+Mainnet is not supported. The verified chain run is recorded in
+`deployments/testnet-vault-acceptance.json`.
 
 The signer runs as a separate process on a server. It provisions one encrypted
 Ed25519 key per organization, assignment, package, vault and agent. It accepts
@@ -40,15 +41,16 @@ The key store is a Testnet prototype, not a reviewed mainnet custody system.
 
 The process binds only to 127.0.0.1. For a remote web runtime, configure a TLS
 reverse proxy and restrict ingress. The protocol accepts POST `/provision` and
-POST `/sign` with a server-only bearer credential. Request size, connection
+POST `/address` and POST `/sign` with a server-only bearer credential. Request size, connection
 count and timeouts are bounded; public ingress additionally needs rate limits.
-Do not expose either endpoint to browser JavaScript.
+Do not expose these endpoints to browser JavaScript.
 
 The web runtime uses `PRAXIS_SIGNER_URL` and `PRAXIS_SIGNER_TOKEN`. Production
 requires HTTPS, refuses embedded URL credentials and does not follow redirects.
 The web runtime must never receive `PRAXIS_SIGNER_MASTER_KEY` or key files.
 
-`/provision` returns only the public delegate address. `/sign` returns only the
+`/provision` returns only the public delegate address. `/address` reads an existing
+delegate without provisioning a key. `/sign` returns only the
 transaction signature. The service never broadcasts: the web execution path must
 persist the signed bytes and digest in its immutable journal before submission.
 
@@ -65,3 +67,30 @@ reviewed runtime role setup as the database owner to grant server-only insert
 and read privileges; update/delete remain revoked. Do not run migrations using
 the restricted web role. Test cross-tenant denial and restart recovery before
 opening this path to users.
+
+## Web execution configuration
+
+Set `PRAXIS_NETWORK=testnet`, `PRAXIS_VAULT_PACKAGE_ID`,
+`PRAXIS_VAULT_MAX_GAS_MIST`, `PRAXIS_SIGNER_URL` and `PRAXIS_SIGNER_TOKEN`
+on the web server. Keep `PRAXIS_VAULT_EXECUTION_ENABLED` off until signer
+operations and onboarding acceptance pass. Owner-approved grant activation
+checks the chain clock, delegate identity and gas balance, then mirrors the
+on-chain limits into the control plane. Vault policy editing redirects to
+wallet-signed controls; ordinary database policy mutations reject vault scopes.
+
+Apply migrations through 0010 before activation. Multiple delegated vaults can
+be enabled in a workspace; the one-enabled-wallet restriction applies only to
+the legacy demo signer. Signed submissions are persisted before broadcast.
+Unknown outcomes hold reservations until read-only receipt reconciliation.
+Turning off new execution does not disable reconciliation of existing records.
+
+## Bounded acceptance runner
+
+`pnpm smoke:vault` prints its plan without submitting anything. Execution needs
+explicit transfer authorization, a stable run ID, a recipient and the confirmation
+environment variable described by `scripts/smoke-vault.ts`. Preserve the private
+`.praxis/vault-acceptance/<run-id>` directory and reuse that run ID for recovery.
+It contains signatures and encrypted disposable Testnet keys; never commit it.
+The runner retains a stale transaction and writes a separate replacement only
+when a different confirmed transaction proves its gas reference was consumed.
+All other unresolved signed transactions retain their exact bytes.

@@ -1,8 +1,9 @@
 # Praxis spending vault
 
-Unpublished contract prototype for owner-funded SUI spending with delegated
-execution. This package is not connected to the hosted application and is not
-ready for mainnet deposits.
+Testnet contract for owner-funded SUI spending with delegated execution.
+Published package metadata is in `../../deployments/testnet-vault.json`.
+Hosted execution requires explicit deployment configuration and acceptance.
+This package is not ready for mainnet deposits.
 
 ## Authorization
 
@@ -37,7 +38,11 @@ existing receipt package and this package are checked. SDK transaction builders
 are exported from `@allen-saji/praxis`; they require explicit package and vault
 IDs and neither sign nor submit transactions.
 
-Before public use, this prototype still needs the final evidence schema, isolated signing, hosted recovery and ownership
-synchronization, wallet onboarding, independent security review, an explicit
-upgrade-authority policy, and live network acceptance. No deployment IDs are
-provided because this package has not been published.
+The bounded Testnet acceptance in `../../deployments/testnet-vault-acceptance.json`
+verifies two agent payments, immutable receipts, Walrus evidence readback, daily
+limit and revocation rejection simulations, and owner withdrawal. The rejection
+probes were simulated, not submitted as failing transactions.
+
+Before public use, hosted signer operations, browser onboarding and HTTP recovery
+need acceptance. Mainnet additionally requires independent security review and
+an explicit upgrade-authority policy.

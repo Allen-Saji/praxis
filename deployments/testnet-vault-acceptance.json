@@ -1,0 +1,51 @@
+{
+  "complete": true,
+  "vaultId": "0xe41c4a17fb77de5dad972714c321328a223a9f16d6d1b75e0d05dd6c44e899ac",
+  "totalPaidMist": "2000000",
+  "vaultBalanceMist": "0",
+  "revoked": true,
+  "recipientBalanceDeltaMist": "2000000",
+  "note": "Contract, isolated signing and Walrus acceptance only; hosted HTTP and browser onboarding require separate acceptance.",
+  "network": "testnet",
+  "verifiedAt": "2026-10-04",
+  "packageId": "0x4ba84cf42c35f70c7c09a3e434aa0c9cbedd797714bbb0c77be41d2480880412",
+  "ownerTransactions": {
+    "create": "Dh8QxvURHz6Hq3Xwq9gkLwDPv2nKYrbKiFemzof3iiAH",
+    "deposit": "7ByoQ7Av67NVaiWSxu3numFUkhmfxSXyABDtJtYfogyh",
+    "authorize-research": "DM8PPFhiiiMxZCkruFmRk5MwjepAKTU2W9F8oSCV8S32",
+    "authorize-trading": "6veYHJEibF2oqsSh4h6rwTi1zZBU6nn5iQVjGvZvb2TY",
+    "fund-gas": "48JJxyG8ZAtmNVx2r7DpvENo3PArwPTsdpWkU8NBVuSt",
+    "revoke-research": "97VVeTAz6m1waGPhFjNZqB2NWuuXHzV57Gz9Rky6jLrz",
+    "withdraw": "FrEoYRkE8hzvcgcTwfDaApNJMR6fTPVw8vxFjzXM6F6T"
+  },
+  "payments": [
+    {
+      "agent": "research",
+      "digest": "BmVodwR1kTznbHShEzYnLWHLeCbAYG2tFaM4cHHh2Xme",
+      "receiptId": "0xad2cb188a41dd038535a818aabaf1c331d81c7982da6106b0e812aa881ca73ec",
+      "evidenceBlobId": "Em8Qq2lOsOXGfWYryjs9VSKYAiCEEYZ-CG0JNX-SXGU",
+      "amountMist": "1000000"
+    },
+    {
+      "agent": "trading",
+      "digest": "6p8gJs43WQ1QoSA1Wggfcc3R7YJH9poc33gvPd1fDhdU",
+      "receiptId": "0x16cdaf08a0d7cda67473fe7eb1fcdd0d8b798f824f9c130a6e2843226038ebd1",
+      "evidenceBlobId": "Xyzc2EK-kK1VYzMkBGpSIFiaEaeNMjfKRlG6zRGhf6c",
+      "amountMist": "1000000"
+    }
+  ],
+  "rejectionProbes": [
+    {
+      "name": "daily-limit",
+      "submitted": false,
+      "module": "budget",
+      "abortCode": "0"
+    },
+    {
+      "name": "revoked-access",
+      "submitted": false,
+      "module": "vault",
+      "abortCode": "5"
+    }
+  ]
+}

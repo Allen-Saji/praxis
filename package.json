@@ -30,8 +30,9 @@
     "seed": "tsx scripts/seed-demo-data.ts",
     "demo:cli": "tsx scripts/demo-cli.ts",
     "preflight:hosted": "tsx scripts/preflight-hosted.ts",
-    "test:ops": "tsx --test scripts/lib/hosted-preflight.test.ts scripts/lib/vault-signer-http.test.ts",
-    "signer:testnet": "tsx scripts/vault-signer.ts"
+    "test:ops": "tsx --test scripts/lib/hosted-preflight.test.ts scripts/lib/vault-signer-http.test.ts scripts/lib/owner-transaction.test.ts",
+    "signer:testnet": "tsx scripts/vault-signer.ts",
+    "smoke:vault": "tsx scripts/smoke-vault.ts"
   },
   "devDependencies": {
     "@allen-saji/praxis": "workspace:*",
