@@ -17,6 +17,9 @@ describe("vault registration", () => {
     const first = await repository.registerVault(input);
     expect(first.wallet.executionStatus).toBe("disabled");
     expect(first.wallet.adapterType).toBe("delegated_vault");
+    expect((await repository.setWalletStatus({ organizationId: f.organizationId, actorId: f.userId, walletId: first.wallet.id, status: "enabled" })).executionStatus).toBe("enabled");
+    const another = await repository.registerVault({ ...input, vaultId: address("6", crypto.randomUUID().slice(0, 8)) });
+    expect((await repository.setWalletStatus({ organizationId: f.organizationId, actorId: f.userId, walletId: another.wallet.id, status: "enabled" })).executionStatus).toBe("enabled");
     expect(first.wallet.vaultOwnerAddress).toBe(input.ownerAddress);
     expect((await repository.registerVault(input)).wallet.id).toBe(first.wallet.id);
     await expect(repository.registerVault({ ...input, ownerAddress: address("7") })).rejects.toMatchObject({ code: "VAULT_OWNER_MISMATCH" });

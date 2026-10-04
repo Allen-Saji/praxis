@@ -71,6 +71,13 @@
       "when": 1791111508043,
       "tag": "0009_living_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791114072329,
+      "tag": "0010_steady_sheva_callister",
+      "breakpoints": true
     }
   ]
 }

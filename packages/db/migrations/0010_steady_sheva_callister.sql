@@ -1,0 +1,2 @@
+DROP INDEX "one_enabled_wallet_per_org";--> statement-breakpoint
+CREATE UNIQUE INDEX "one_enabled_wallet_per_org" ON "wallets" USING btree ("organization_id") WHERE "wallets"."execution_status" = 'enabled' and "wallets"."adapter_type" = 'demo_keypair';
