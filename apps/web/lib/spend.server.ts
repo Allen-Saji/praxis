@@ -6,7 +6,7 @@ import { hashCanonical, normalizeSuiAddress, parseMist, stablePurposeTag, type P
 import { BudgetLimitError, DbDomainError } from "@allen-saji/praxis-db";
 import { DEPLOYMENTS, KeypairAdapter, PraxisSdkError, WALRUS_ENDPOINTS, WalrusStore, buildReasoningEvidence, buildSuiTransferTransaction, executeApprovedSuiSpend, makeSuiClient, publishEvidence, recordBlockedSuiIntent, simulateSuiTransfer, type EvidencePort, type NormalizedSimulationReport, type SignerPort, type SuiTransport } from "@allen-saji/praxis";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { executionLeaseRepository, intentRepository, reservationRepository, workspaceRepository } from "./control-plane.server";
+import { HttpError, executionLeaseRepository, intentRepository, reservationRepository, workspaceRepository } from "./control-plane.server";
 
 type Intent = NonNullable<Awaited<ReturnType<ReturnType<typeof intentRepository>["byId"]>>>;
 type Runtime = { transport: SuiTransport; signer: SignerPort; evidence: EvidencePort };
@@ -15,13 +15,14 @@ export type AgentContext = {
   credential: { id: string };
   assignment: { id: string };
   agent: { id: string };
-  wallet: { id: string; suiAddress: string };
+  wallet: { id: string; suiAddress: string; adapterType?: string };
   organization: { id: string };
 };
 
 export type SpendRequest = { recipient: string; amountMist: string; coinType: "0x2::sui::SUI"; reasoning: { prompt: string; decision: string; model: string; metadata?: Record<string, unknown> }; privacy: "public" };
 
 export async function createAndProcessSpend(input: { context: AgentContext; idempotencyKey: string; request: SpendRequest; runtime?: Runtime }) {
+  if (input.context.wallet.adapterType === "delegated_vault") throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault execution is not enabled yet.");
   const request = { ...input.request, recipient: normalizeSuiAddress(input.request.recipient), amountMist: parseMist(input.request.amountMist).toString() };
   const requestHash = hashCanonical(request);
   const purposeTag = stablePurposeTag({ organizationId: input.context.organization.id, assignmentId: input.context.assignment.id, idempotencyKey: input.idempotencyKey, requestHash });

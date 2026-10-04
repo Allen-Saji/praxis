@@ -1,3 +1,8 @@
+import { createHash } from "node:crypto";
+import { VaultAgentControls } from "@/components/workspace/VaultAgentControls";
+import { makeSuiClient, readVaultState, readVaultGrant } from "@allen-saji/praxis";
+import { VaultOwnerControls } from "@/components/workspace/VaultOwnerControls";
+import { vaultPackageId } from "@/lib/vault-config.server";
 import Link from "next/link";
 import { requireWalletDetail } from "@/lib/workspace-view.server";
 import { agentReadiness, assignmentBudget, assignmentTransactionCap, walletBudget } from "@/lib/workspace-model";
@@ -14,6 +19,39 @@ export default async function Wallet({ params }: { params: Promise<{ slug: strin
   const { slug, walletId } = await params;
   const data = await requireWalletDetail(slug, walletId);
   const wallet = data.wallet;
+  if (wallet.adapterType === "delegated_vault") {
+    const packageId = vaultPackageId();
+    if (wallet.vaultPackageId !== packageId) throw new Error("Vault belongs to a different deployment");
+    const state = await readVaultState(makeSuiClient("testnet"), { packageId, vaultId: wallet.suiAddress });
+    if (state.owner !== wallet.vaultOwnerAddress) throw new Error("Vault owner does not match registration");
+    const grants = await Promise.all(data.assignments.filter((row) => row.walletId === walletId && row.status !== "archived").map(async (row) => {
+      const agent = `0x${createHash("sha256").update(row.agentId).digest("hex")}`;
+      try { return { row, agent, hasGrant: true as boolean | null, grant: await readVaultGrant(makeSuiClient("testnet"), packageId, state, agent) }; }
+      catch (error) {
+        const missing = error && typeof error === "object" && "code" in error && ["notExists", "dynamicFieldNotFound"].includes(String(error.code));
+        return { row, agent, hasGrant: state.grants.size === "0" || missing ? false : null, grant: null };
+      }
+    }));
+    return <WorkspaceFrame slug={slug} name={data.organization.name} title={wallet.label} description="Funds and permissions controlled by your Sui wallet.">
+      <Panel title="Spending vault" detail="Sui Testnet">
+        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <div><dt className="text-[var(--text-low)]">Vault balance</dt><dd className="mt-2 font-mono text-xl">{sui(state.funds)} SUI</dd></div>
+          <div><dt className="text-[var(--text-low)]">Agent payments</dt><dd className="mt-2">{state.paused ? "Paused on-chain" : "Allowed within active grants"}</dd></div>
+          <div><dt className="text-[var(--text-low)]">Total spent / allowance</dt><dd className="mt-2 font-mono">{sui(state.spent)} / {sui(state.allowance)} SUI</dd></div>
+          <div><dt className="text-[var(--text-low)]">Daily / monthly ceilings</dt><dd className="mt-2 font-mono">{sui(state.budget.daily_limit)} / {sui(state.budget.monthly_limit)} SUI</dd></div>
+        </dl>
+        <p className="mt-5 break-all font-mono text-xs text-[var(--text-low)]">Vault: {wallet.suiAddress}</p>
+        <p className="mt-2 break-all font-mono text-xs text-[var(--text-low)]">Owner: {state.owner}</p>
+      </Panel>
+      {data.member.role === "owner" && data.session.user.primarySuiAddress === state.owner ? <Panel title="Manage your funds"><VaultOwnerControls packageId={packageId} vaultId={wallet.suiAddress} owner={state.owner} paused={state.paused} /></Panel> : null}
+      <Panel title="Agent access"><p className="text-sm text-[var(--text-mid)]">Hosted execution is not active for this vault yet. Owner funding, withdrawal and on-chain controls are available.</p></Panel>
+      {data.member.role === "owner" ? <Panel title="Add an agent"><WalletAgentSetup organizationId={data.organization.id} walletId={walletId} slug={slug} vaultMode agents={data.agents.filter((agent) => agent.status === "active" && !grants.some(({ row }) => row.agentId === agent.id))} /></Panel> : null}
+      {grants.map(({ row, agent, grant, hasGrant }) => <Panel key={row.id} title={data.agents.find((item) => item.id === row.agentId)?.name ?? "Agent"}>
+        <p className="mb-4 text-sm text-[var(--text-mid)]">{grant ? `On-chain access ${grant.active ? "enabled" : "revoked"}. Expires ${new Date(Number(grant.expires_ms)).toISOString()}. Total spent: ${sui(grant.spent)} SUI.` : hasGrant === false ? "No on-chain authorization yet." : "Could not verify this agent's grant. Refresh before changing access."}</p>
+        {data.member.role === "owner" && data.session.user.primarySuiAddress === state.owner ? <VaultAgentControls organizationId={data.organization.id} assignmentId={row.id} packageId={packageId} vaultId={wallet.suiAddress} owner={state.owner} agent={agent} hasGrant={hasGrant} /> : null}
+      </Panel>)}
+    </WorkspaceFrame>;
+  }
   const scope = data.scopes.find((item) => item.walletId === walletId);
   const canManage = data.member.role === "owner";
   const assigned = data.assignments.filter((item) => data.agents.some((agent) => agent.id === item.agentId));

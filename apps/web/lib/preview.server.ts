@@ -19,6 +19,7 @@ function previewDependencies(): PreviewDependencies {
 }
 
 export async function previewSpend(input: { context: AgentContext; request: SpendRequest }, dependencies?: PreviewDependencies) {
+  if (input.context.wallet.adapterType === "delegated_vault") throw new HttpError(503, "VAULT_EXECUTION_PENDING", "Hosted vault preview is not enabled yet.");
   const deps = dependencies ?? previewDependencies();
   const { context } = input;
   const request = { ...input.request, recipient: normalizeSuiAddress(input.request.recipient), amountMist: parseMist(input.request.amountMist).toString() };
