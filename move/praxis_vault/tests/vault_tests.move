@@ -377,3 +377,46 @@ fun reducing_limit_below_spent_fails_closed() {
     pay(&mut s, 1, 1, 1, 0);
     s.end();
 }
+
+#[test]
+#[expected_failure(abort_code = 0, location = praxis_vault::budget)]
+fun vault_daily_limit_applies_to_delegate() {
+    let mut s = setup();
+    s.next_tx(OWNER);
+    let mut v = s.take_shared<Vault>();
+    vault::set_window_limits(&mut v, 10, 100, s.ctx());
+    ts::return_shared(v);
+    s.next_tx(DELEGATE);
+    pay(&mut s, 11, 0, 1, 0);
+    s.end();
+}
+
+#[test]
+#[expected_failure(abort_code = 0, location = praxis_vault::budget)]
+fun agent_daily_limit_applies_to_delegate() {
+    let mut s = setup();
+    s.next_tx(OWNER);
+    let mut v = s.take_shared<Vault>();
+    vault::set_agent_window_limits(&mut v, AGENT, 10, 100, s.ctx());
+    ts::return_shared(v);
+    s.next_tx(DELEGATE);
+    pay(&mut s, 11, 0, 0, 1);
+    s.end();
+}
+
+#[test]
+fun immutable_receipt_matches_debit() {
+    let mut s = setup();
+    s.next_tx(DELEGATE);
+    pay(&mut s, 42, 0, 0, 0);
+    s.next_tx(RECIPIENT);
+    let receipt = s.take_immutable<vault::Receipt>();
+    let payment = vault::receipt_payment(&receipt);
+    let v = s.take_shared<Vault>();
+    assert!(vault::payment_amount(&payment) == 42, 130);
+    assert!(vault::payment_vault(&payment) == object::id(&v), 131);
+    assert!(vault::balance(&v) == 158, 132);
+    ts::return_shared(v);
+    ts::return_immutable(receipt);
+    s.end();
+}

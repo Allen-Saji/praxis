@@ -1,7 +1,9 @@
 /// Owner-funded SUI vault with explicitly bounded delegate authority.
-/// Initial contract slice: allowances are lifetime totals, not day/month limits.
+/// Lifetime ceilings and UTC day/month limits are enforced on-chain.
 /// Evidence references are executor assertions, not verified simulation proofs.
 module praxis_vault::vault;
+
+use praxis_vault::budget::{Self, Budget};
 
 use sui::balance::{Self, Balance};
 use sui::clock::{Self, Clock};
@@ -37,6 +39,7 @@ public struct Vault has key {
     per_payment: u64,
     allowance: u64,
     spent: u64,
+    budget: Budget,
     recipients: vector<address>,
     grants: Table<address, Grant>,
 }
@@ -50,6 +53,7 @@ public struct Grant has store {
     per_payment: u64,
     allowance: u64,
     spent: u64,
+    budget: Budget,
     expires_ms: u64,
     recipients: vector<address>,
     next_sequence: u64,
@@ -76,7 +80,13 @@ public struct GrantChanged has copy, drop {
 
 /// Event minted only by the atomic debit path. It identifies the funding vault
 /// separately from the transaction signer. Chain digest identifies execution.
-public struct Payment has copy, drop {
+public struct Receipt has key {
+    id: UID,
+    payment: Payment,
+}
+
+public struct Payment has copy, drop, store {
+    receipt_id: ID,
     vault: ID,
     owner: address,
     agent: address,
@@ -107,7 +117,7 @@ public fun create(
     let vault = Vault {
         id: object::new(ctx), owner: ctx.sender(), funds: balance::zero(),
         paused: false, version: 0, per_payment, allowance, spent: 0,
-        recipients, grants: table::new(ctx),
+        recipients, grants: table::new(ctx), budget: budget::create(allowance, allowance),
     };
     event::emit(VaultCreated { vault: object::id(&vault), owner: vault.owner });
     transfer::share_object(vault);
@@ -151,6 +161,23 @@ public fun set_policy(
     emit_vault(vault);
 }
 
+/// Window updates invalidate pending requests and preserve current usage.
+public fun set_window_limits(vault: &mut Vault, daily: u64, monthly: u64, ctx: &TxContext) {
+    assert_owner(vault, ctx);
+    budget::set_limits(&mut vault.budget, daily, monthly);
+    vault.version = vault.version + 1;
+    emit_vault(vault);
+}
+
+public fun set_agent_window_limits(vault: &mut Vault, agent: address, daily: u64, monthly: u64, ctx: &TxContext) {
+    assert_owner(vault, ctx);
+    assert!(table::contains(&vault.grants, agent), ENoGrant);
+    let grant = table::borrow_mut(&mut vault.grants, agent);
+    budget::set_limits(&mut grant.budget, daily, monthly);
+    grant.version = grant.version + 1;
+    emit_grant(vault, agent);
+}
+
 public fun set_paused(vault: &mut Vault, paused: bool, ctx: &TxContext) {
     assert_owner(vault, ctx);
     vault.paused = paused;
@@ -168,7 +195,7 @@ public fun authorize(
     assert!(!table::contains(&vault.grants, agent), EGrantExists);
     table::add(&mut vault.grants, agent, Grant {
         delegate, active: true, version: 0, per_payment, allowance, spent: 0,
-        expires_ms, recipients, next_sequence: 0,
+        expires_ms, recipients, next_sequence: 0, budget: budget::create(allowance, allowance),
     });
     emit_grant(vault, agent);
 }
@@ -226,16 +253,22 @@ public fun spend(
     assert!(amount <= grant.per_payment, EAmount);
     assert!(grant.spent <= grant.allowance, EAllowance);
     assert!(amount <= grant.allowance - grant.spent, EAllowance);
+    budget::consume(&mut grant.budget, amount, timestamp_ms);
+    budget::consume(&mut vault.budget, amount, timestamp_ms);
     grant.spent = grant.spent + amount;
     grant.next_sequence = grant.next_sequence + 1;
     vault.spent = vault.spent + amount;
     let payment = coin::from_balance(balance::split(&mut vault.funds, amount), ctx);
     transfer::public_transfer(payment, recipient);
-    event::emit(Payment {
-        vault: object::id(vault), owner: vault.owner, agent,
+    let receipt_uid = object::new(ctx);
+    let receipt_id = object::uid_to_inner(&receipt_uid);
+    let payment_record = Payment {
+        receipt_id, vault: object::id(vault), owner: vault.owner, agent,
         executor: ctx.sender(), recipient, amount, sequence,
         vault_version, grant_version, evidence, timestamp_ms,
-    });
+    };
+    event::emit(payment_record);
+    transfer::freeze_object(Receipt { id: receipt_uid, payment: payment_record });
 }
 
 fun assert_owner(vault: &Vault, ctx: &TxContext) {
@@ -273,3 +306,7 @@ public fun spent(vault: &Vault): u64 { vault.spent }
 public fun version(vault: &Vault): u64 { vault.version }
 public fun grant_spent(vault: &Vault, agent: address): u64 { table::borrow(&vault.grants, agent).spent }
 public fun next_sequence(vault: &Vault, agent: address): u64 { table::borrow(&vault.grants, agent).next_sequence }
+
+public fun receipt_payment(receipt: &Receipt): Payment { receipt.payment }
+public fun payment_amount(payment: &Payment): u64 { payment.amount }
+public fun payment_vault(payment: &Payment): ID { payment.vault }

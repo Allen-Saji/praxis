@@ -13,16 +13,17 @@ Withdrawal works while paused and requires no Praxis server or delegate.
 
 Each grant binds a stable agent identity to a delegate address. Only that
 address can execute the grant. A payment must satisfy both recipient lists,
-both per-payment limits and both total allowances. Grants expire using the
+both per-payment limits, UTC daily/monthly limits and both total allowances. Grants expire using the
 Sui Clock. Sequence and policy versions reject replayed or stale requests.
 Usage and sequence survive grant updates, revocation and signer rotation.
 Creating another grant remains subject to the same vault allowance.
 
-Allowances in this prototype are lifetime totals. They do not reset daily or
-monthly. Gas is paid by the transaction sender separately from vault principal.
+Lifetime allowances do not reset. Separate UTC daily and calendar-month
+budgets reset at their respective boundaries. Window limits default to the
+lifetime allowance; owners can configure them independently. Gas is paid by the transaction sender separately from vault principal.
 The owner address is fixed; owner transfer and key recovery are not supported.
 
-Payments debit the vault, advance counters and emit a `Payment` event atomically.
+Payments debit the vault, advance counters and emit a `Payment` event and freeze an immutable `Receipt` atomically.
 The event distinguishes vault, owner, agent and executor. Evidence bytes are a
 reference supplied by the executor, not proof of simulation or blob validity.
 A compromised delegate can spend within its on-chain authorization, including
@@ -36,8 +37,7 @@ existing receipt package and this package are checked. SDK transaction builders
 are exported from `@allen-saji/praxis`; they require explicit package and vault
 IDs and neither sign nor submit transactions.
 
-Before public use, this prototype still needs calendar budget windows, the
-final receipt/evidence schema, isolated signing, hosted recovery and ownership
+Before public use, this prototype still needs the final evidence schema, isolated signing, hosted recovery and ownership
 synchronization, wallet onboarding, independent security review, an explicit
 upgrade-authority policy, and live network acceptance. No deployment IDs are
 provided because this package has not been published.
