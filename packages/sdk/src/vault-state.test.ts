@@ -1,4 +1,5 @@
-import { bcs } from "@mysten/sui/bcs";
+import { deriveDynamicFieldID } from "@mysten/sui/utils";
+import { bcs, TypeTagSerializer } from "@mysten/sui/bcs";
 import { describe, expect, it, vi } from "vitest";
 import { VaultBcs, readVaultState, GrantBcs, readVaultGrant } from "./vault-state";
 import type { SuiTransport } from "./ports";
@@ -8,6 +9,14 @@ const state = { id: target.vaultId, owner: addr("3"), funds: "9007199254740993",
 const object = () => ({ objectId: target.vaultId, type: `${target.packageId}::vault::Vault`, owner: { Shared: { initialSharedVersion: "1" } }, content: VaultBcs.serialize(state).toBytes() });
 const transport = (value: unknown): SuiTransport => ({ getObject: vi.fn(async () => value), getBalance: vi.fn(), simulateTransaction: vi.fn(), executeTransaction: vi.fn() });
 describe("vault chain state", () => {
+  it("recognizes only the exact missing grant and preserves provider failures", async () => {
+    const agent = addr("7");
+    const fieldId = deriveDynamicFieldID(state.grants.id, TypeTagSerializer.parseFromStr("address"), bcs.Address.serialize(agent).toBytes());
+    const client = { getDynamicField: vi.fn().mockRejectedValue(new Error(`Object ${fieldId} not found`)) };
+    await expect(readVaultGrant(client, target.packageId, state, agent)).rejects.toMatchObject({ code: "dynamicFieldNotFound" });
+    const outage = new Error("RPC unavailable"); client.getDynamicField.mockRejectedValue(outage);
+    await expect(readVaultGrant(client, target.packageId, state, agent)).rejects.toBe(outage);
+  });
   it("decodes a grant only for the requested agent and contract", async () => {
     const grant = { delegate: addr("6"), active: true, version: "2", per_payment: "10", allowance: "20", spent: "1", budget: state.budget, expires_ms: "1000", recipients: state.recipients, next_sequence: "1" };
     const dynamicField = { name: { type: "address", bcs: bcs.Address.serialize(addr("7")).toBytes() }, value: { type: `${target.packageId}::vault::Grant`, bcs: GrantBcs.serialize(grant).toBytes() } };

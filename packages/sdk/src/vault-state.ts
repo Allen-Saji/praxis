@@ -1,4 +1,5 @@
-import { bcs } from "@mysten/sui/bcs";
+import { deriveDynamicFieldID } from "@mysten/sui/utils";
+import { bcs, TypeTagSerializer } from "@mysten/sui/bcs";
 import { normalizeSuiAddressStrict } from "./address";
 import type { SuiTransport } from "./ports";
 import type { VaultTarget } from "./vault";
@@ -41,7 +42,13 @@ export interface VaultDynamicFields {
 export async function readVaultGrant(transport: VaultDynamicFields, packageId: string, state: VaultState, agent: string): Promise<VaultGrantState> {
   const normalized = normalizeSuiAddressStrict(agent);
   const name = bcs.Address.serialize(normalized).toBytes();
-  const raw = await transport.getDynamicField({ parentId: state.grants.id, name: { type: "address", bcs: name } });
+  let raw: unknown;
+  try { raw = await transport.getDynamicField({ parentId: state.grants.id, name: { type: "address", bcs: name } }); }
+  catch (error) {
+    const fieldId = deriveDynamicFieldID(state.grants.id, TypeTagSerializer.parseFromStr("address"), name);
+    if (error instanceof Error && error.message === `Object ${fieldId} not found`) throw Object.assign(new Error("Agent has no vault grant", { cause: error }), { code: "dynamicFieldNotFound" });
+    throw error;
+  }
   if (!raw || typeof raw !== "object" || !("dynamicField" in raw)) throw new Error("Vault grant is unavailable");
   const field = raw.dynamicField;
   if (!field || typeof field !== "object" || !("value" in field) || !("name" in field)) throw new Error("Malformed vault grant");

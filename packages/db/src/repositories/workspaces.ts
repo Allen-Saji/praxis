@@ -101,12 +101,17 @@ export class WorkspaceRepository {
         .innerJoin(schema.policyVersions, and(eq(schema.policyVersions.id, schema.policyScopes.currentVersionId), eq(schema.policyVersions.status, "active")))
         .where(and(eq(schema.policyScopes.organizationId, input.organizationId), eq(schema.policyScopes.scopeType, "wallet"), eq(schema.policyScopes.walletId, input.walletId))).limit(1);
       const [agent] = await tx.select({ id: schema.agents.id }).from(schema.agents).where(and(eq(schema.agents.organizationId, input.organizationId), eq(schema.agents.id, input.agentId), eq(schema.agents.status, "active"))).limit(1);
-      if (!walletPolicy || !agent) throw new DbDomainError("ASSIGNMENT_SUBJECT_NOT_READY", "wallet policy and active agent are required");
+      const [wallet] = await tx.select({ adapterType: schema.wallets.adapterType }).from(schema.wallets).where(and(eq(schema.wallets.organizationId, input.organizationId), eq(schema.wallets.id, input.walletId))).limit(1);
+      if (!wallet || !agent || (!walletPolicy && wallet.adapterType !== "delegated_vault")) throw new DbDomainError("ASSIGNMENT_SUBJECT_NOT_READY", "wallet policy and active agent are required");
       const [assignment] = await tx.insert(schema.assignments).values({ organizationId: input.organizationId, walletId: input.walletId, agentId: input.agentId, status: "disabled" }).returning();
       if (!assignment) throw new DbDomainError("ASSIGNMENT_CREATE_FAILED", "assignment was not created");
       const [scope] = await tx.insert(schema.policyScopes).values({ organizationId: input.organizationId, scopeType: "assignment", assignmentId: assignment.id }).returning();
       if (!scope) throw new DbDomainError("POLICY_SCOPE_CREATE_FAILED", "assignment policy scope was not created");
-      const source = walletPolicy.version;
+      if (wallet.adapterType === "delegated_vault") {
+        await appendAuditEvent(tx, { organizationId: input.organizationId, actorType: "user", actorId: input.actorId, eventType: "assignment_created", subjectType: "assignment", subjectId: assignment.id, metadataJson: { assignmentId: assignment.id, walletId: input.walletId, scopeId: scope.id } });
+        return { assignment, policyScope: scope, policyDraft: null };
+      }
+      const source = walletPolicy!.version;
       const [draft] = await tx.insert(schema.policyVersions).values({ scopeId: scope.id, version: 1, status: "draft", maxPerTxMist: source.maxPerTxMist, maxPerDayMist: source.maxPerDayMist, maxPerMonthMist: source.maxPerMonthMist, blockRiskScoreAt: source.blockRiskScoreAt, requireSimulation: true, canonicalJson: source.canonicalJson, policyHash: source.policyHash, createdByUserId: input.actorId }).returning();
       if (!draft) throw new DbDomainError("POLICY_DRAFT_CREATE_FAILED", "assignment policy draft was not created");
       const rules = await tx.select({ recipient: schema.policyRecipientRules.recipient, effect: schema.policyRecipientRules.effect }).from(schema.policyRecipientRules).where(eq(schema.policyRecipientRules.policyVersionId, source.id));

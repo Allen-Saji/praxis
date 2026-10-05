@@ -17,6 +17,12 @@ describe("vault registration", () => {
     const first = await repository.registerVault(input);
     expect(first.wallet.executionStatus).toBe("disabled");
     expect(first.wallet.adapterType).toBe("delegated_vault");
+    const agent = await repository.createAgent({ organizationId: f.organizationId, actorId: f.userId, name: "New vault agent", externalRef: crypto.randomUUID() });
+    const assigned = await repository.createAssignment({ organizationId: f.organizationId, actorId: f.userId, walletId: first.wallet.id, agentId: agent.id });
+    expect(assigned.assignment.status).toBe("disabled");
+    expect(assigned.policyScope.currentVersionId).toBeNull();
+    expect(assigned.policyDraft).toBeNull();
+    await expect(repository.setAssignmentStatus({ organizationId: f.organizationId, actorId: f.userId, assignmentId: assigned.assignment.id, status: "active" })).rejects.toMatchObject({ code: "NO_ACTIVE_POLICY" });
     expect((await repository.setWalletStatus({ organizationId: f.organizationId, actorId: f.userId, walletId: first.wallet.id, status: "enabled" })).executionStatus).toBe("enabled");
     const another = await repository.registerVault({ ...input, vaultId: address("6", crypto.randomUUID().slice(0, 8)) });
     expect((await repository.setWalletStatus({ organizationId: f.organizationId, actorId: f.userId, walletId: another.wallet.id, status: "enabled" })).executionStatus).toBe("enabled");
