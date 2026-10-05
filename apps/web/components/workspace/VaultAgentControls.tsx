@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
 import { useRouter } from "next/navigation";
 import { buildAuthorizeVaultAgent, buildRevokeVaultAgent } from "@allen-saji/praxis/vault";
 import { toMist } from "@/lib/workspace-display";
@@ -31,6 +32,22 @@ export function VaultAgentControls({ organizationId, assignmentId, owner, vaultI
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Agent authorization failed"); }
     finally { setPending(false); }
   }
+  async function fundGas() {
+    setPending(true); setError(null); setDigest(null);
+    try {
+      if (!connected) throw new Error("Connect the vault owner's wallet.");
+      const response = await fetch(`/api/workspaces/${organizationId}/assignments/${assignmentId}/delegate`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message ?? "Delegate setup is unavailable.");
+      if (result.packageId !== packageId || result.vaultId !== vaultId || result.agent !== agent || result.network !== "testnet" || !/^0x[0-9a-f]{64}$/.test(result.delegate)) throw new Error("Delegate scope does not match this vault.");
+      const tx = new Transaction(); tx.setSender(owner);
+      const [gasCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(50_000_000n)]);
+      tx.transferObjects([gasCoin], result.delegate);
+      const funded = await signer.mutateAsync({ transaction: await tx.toJSON(), chain: "sui:testnet" });
+      setDigest(funded.digest); router.refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Agent gas funding failed"); }
+    finally { setPending(false); }
+  }
   async function activate() {
     setPending(true); setError(null);
     try {
@@ -51,10 +68,15 @@ export function VaultAgentControls({ organizationId, assignmentId, owner, vaultI
         <Button variant="primary" disabled={!connected || pending || hasGrant === null}>Approve agent access</Button>
       </form>
     </details>
+    {hasGrant ? <div className="space-y-2 rounded border border-[var(--border)] p-4">
+      <p className="text-sm">Agent transaction fees</p>
+      <p className="text-xs leading-5 text-[var(--text-low)]">Send 0.05 Testnet SUI from your connected wallet to this agent's delegate for network fees. This is separate from vault funds and cannot be withdrawn through the vault. Each click requests another top-up in your wallet.</p>
+      <Button disabled={!connected || pending} onClick={() => void fundGas()}>Fund agent gas: 0.05 Testnet SUI</Button>
+    </div> : null}
     {hasGrant ? <Button variant="primary" disabled={pending || activated} onClick={() => void activate()}>{activated ? "Hosted access enabled" : "Verify and enable hosted access"}</Button> : null}
     {hasGrant ? <Button disabled={!connected || pending} onClick={() => void run(null)}>Revoke on-chain access</Button> : null}
     {error ? <p role="alert" className="text-sm text-[var(--risk-critical)]">{error}</p> : null}
-    {pending ? <p role="status" className="text-sm">Preparing your wallet approval...</p> : null}
+    {pending ? <p role="status" className="text-sm">Processing your request...</p> : null}
     {digest ? <p role="status" className="text-sm">Approval submitted. <a className="text-[var(--accent)] underline" href={`https://suiscan.xyz/testnet/tx/${digest}`} target="_blank" rel="noreferrer">Check confirmation</a></p> : null}
   </div>;
 }

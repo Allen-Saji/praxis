@@ -33,13 +33,13 @@ export default function DocsPage() {
           <h2 className="text-2xl font-semibold">Connect an agent to your workspace</h2>
           <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-[var(--text-mid)]">
             <li>Open Praxis, sign in with a Sui wallet, and create your workspace.</li>
-            <li>Add an eligible execution wallet and review its spending limits.</li>
-            <li>Open the wallet and add agents. Review each agent's individual limits, activate them and enable access.</li>
+            <li>Create a spending vault on Sui Testnet, approve it in your wallet, then deposit the SUI your agents may spend.</li>
+            <li>Open the vault and add agents. Approve each agent's limits and recipients in your wallet, fund its gas with the labeled 0.05 Testnet SUI top-up, then verify and enable hosted access.</li>
             <li>Issue an assignment credential. Store it locally as PRAXIS_TOKEN; it is shown only once.</li>
             <li>Call GET /api/v1/agent with Authorization: Bearer PRAXIS_TOKEN to check access without a payment.</li>
           </ol>
           <p className="mt-4 text-sm leading-7 text-[var(--text-mid)]">Preview with POST /api/v1/simulations to inspect current limits and risk without reserving funds or signing. Execute with POST /api/v1/spend-intents and an Idempotency-Key; current authorization, budgets and simulation are checked again. A preview is never an execution approval. Requests are authorized by the credential's wallet assignment. Claude Code and Codex can call the HTTP API through a local tool or script; a native MCP connector is not included.</p>
-          <p className="mt-3 text-sm leading-7 text-[var(--text-mid)]">Hosted execution is limited to the configured Sui Testnet wallet, and published reasoning is public. Connecting a sign-in wallet does not grant it execution support.</p>
+          <p className="mt-3 text-sm leading-7 text-[var(--text-mid)]">Hosted vaults support Sui Testnet SUI. You retain control of deposits, withdrawals and agent permissions. Only deposited vault funds are available for agent payments; delegate gas is funded separately. Published reasoning is public.</p>
           <a className="focus-ring mt-4 inline-flex min-h-11 items-center text-sm text-[var(--accent)]" href="/app">Open app</a>
         </section>
 
@@ -82,7 +82,7 @@ export default function DocsPage() {
 
             <Step id="configure" n={2} title="Configure">
               <p className="text-[16px] leading-[26px] text-[var(--text-mid)]">
-                Direct SDK mode takes a wallet adapter. Keep the signer isolated from the agent. Hosted mode uses assignment credentials and the configured operator signer.
+                Direct SDK mode takes a wallet adapter. Keep the signer isolated from the agent. Hosted vault mode uses assignment credentials and a separate delegate signer authorized by the vault owner.
               </p>
               <CodeBlock tabs={DOCS_CONFIGURE} />
             </Step>
