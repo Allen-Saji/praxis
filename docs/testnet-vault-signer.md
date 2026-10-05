@@ -111,8 +111,11 @@ service settings before deployment:
   token as described above. Configure `PORT` or accept Railway's injected port.
 - Keep the master key in Railway's secret variables, separate from the volume.
   Keep an independent protected backup; a volume backup alone cannot decrypt keys.
-- Enable volume backups and verify delegate identity after a redeployment before
-  enabling public vault execution. All payment endpoints still require the token.
+- Verify delegate identity after a redeployment before enabling public vault
+  execution. All payment endpoints still require the token.
+- Railway currently restricts backup creation to Pro in its dashboard. On Hobby,
+  arrange protected external backups of encrypted key records and test restoration;
+  persistence through redeploys is not a backup. Do not upgrade the plan implicitly.
 
 When `RAILWAY_ENVIRONMENT_ID` is set, startup requires
 `RAILWAY_VOLUME_MOUNT_PATH`, requires the key directory to be inside that mount,
