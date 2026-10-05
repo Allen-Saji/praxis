@@ -38,7 +38,7 @@ async function body(request: IncomingMessage) {
   return object(JSON.parse(Buffer.concat(chunks).toString("utf8")));
 }
 
-/** Bind to loopback; use an authenticated TLS reverse proxy for remote access.
+/** Default to loopback; use a TLS reverse proxy for external binding.
  * Token belongs only to the web backend, never browsers or agent credentials. */
 export function createVaultSignerServer(store: Pick<TestnetDelegateStore, "provision" | "address" | "sign">, token: string) {
   if (Buffer.byteLength(token) < 32) throw new Error("Signer service token must contain at least 32 bytes");
@@ -47,8 +47,10 @@ export function createVaultSignerServer(store: Pick<TestnetDelegateStore, "provi
     response.setHeader("Content-Type", "application/json");
     response.setHeader("Cache-Control", "no-store");
     const finish = (status: number, result: unknown) => { response.statusCode = status; response.end(JSON.stringify(result)); };
+    if (request.method === "GET" && request.url === "/readyz") return finish(200, { status: "ok" });
     const received = createHash("sha256").update(request.headers.authorization ?? "").digest();
     if (!timingSafeEqual(expected, received)) return finish(401, { error: "Unauthorized" });
+    if (request.method === "GET" && request.url === "/health") return finish(200, { status: "ok", network: "testnet" });
     if (request.method !== "POST" || !["/provision", "/address", "/sign"].includes(request.url ?? "")) return finish(404, { error: "Not found" });
     if (request.headers["content-type"] !== "application/json") return finish(415, { error: "JSON required" });
     try {

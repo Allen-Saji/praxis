@@ -22,7 +22,8 @@ Build workspace packages, then run `pnpm signer:testnet` with:
 - `PRAXIS_SIGNER_TOKEN`: independent high-entropy service credential, at least
   32 bytes. This is not an agent API credential.
 - `PRAXIS_SIGNER_MAX_GAS_MIST`: explicit positive gas budget ceiling.
-- `PRAXIS_SIGNER_PORT`: optional loopback port, default 4317.
+- `PRAXIS_SIGNER_PORT`: optional port, default 4317; platform `PORT` takes precedence.
+- `PRAXIS_SIGNER_HOST`: default `127.0.0.1`; use `0.0.0.0` behind Railway TLS.
 
 Provision secrets through the service manager's protected environment. Never
 paste keys into command arguments, logs or repository files. Run under a
@@ -39,7 +40,7 @@ The key store is a Testnet prototype, not a reviewed mainnet custody system.
 
 ## Network boundary
 
-The process binds only to 127.0.0.1. For a remote web runtime, configure a TLS
+The process binds to 127.0.0.1 by default. For a remote web runtime, configure a TLS
 reverse proxy and restrict ingress. The protocol accepts POST `/provision` and
 POST `/address` and POST `/sign` with a server-only bearer credential. Request size, connection
 count and timeouts are bounded; public ingress additionally needs rate limits.
@@ -94,3 +95,39 @@ It contains signatures and encrypted disposable Testnet keys; never commit it.
 The runner retains a stale transaction and writes a separate replacement only
 when a different confirmed transaction proves its gas reference was consumed.
 All other unresolved signed transactions retain their exact bytes.
+
+## Railway Testnet service
+
+Use a separate project and one signer service with a persistent volume mounted
+at `/data`. Keep the web application on its existing host. Configure these
+service settings before deployment:
+
+- Build command: `pnpm --filter @allen-saji/praxis build`.
+- Start command: `pnpm signer:testnet`.
+- Healthcheck path: `/readyz` (returns only process readiness, not key or chain state).
+- One instance; disable sleeping for the signer.
+- `PRAXIS_SIGNER_HOST=0.0.0.0` and `PRAXIS_SIGNER_DIRECTORY=/data/keys`.
+- Set the Testnet package, network, gas ceiling, master key and independent API
+  token as described above. Configure `PORT` or accept Railway's injected port.
+- Keep the master key in Railway's secret variables, separate from the volume.
+  Keep an independent protected backup; a volume backup alone cannot decrypt keys.
+- Enable volume backups and verify delegate identity after a redeployment before
+  enabling public vault execution. All payment endpoints still require the token.
+
+When `RAILWAY_ENVIRONMENT_ID` is set, startup requires
+`RAILWAY_VOLUME_MOUNT_PATH`, requires the key directory to be inside that mount,
+and checks `/proc/self/mountinfo`. It refuses ephemeral storage rather than
+silently creating replacement delegates after a restart.
+
+`/health` is authenticated and reports the Testnet process status. Neither
+health endpoint proves chain availability, key decryptability, or funded gas.
+`pnpm test:ops` includes an actual subprocess/HTTP test that provisions an
+unfunded test key, verifies signatures, restarts the process, rechecks identity,
+and rejects altered requests and a wrong encryption key. It submits no chain
+transactions.
+
+Railway documents [persistent volumes](https://docs.railway.com/volumes/reference),
+[backups](https://docs.railway.com/volumes/backups) and
+[deployment healthchecks](https://docs.railway.com/deployments/healthchecks).
+Volume-backed service redeployments have brief downtime. Resource usage is
+billed under the workspace plan; set an agreed budget before enabling service.
