@@ -54,13 +54,14 @@ export const DOCS_CONFIGURE: CodeTab[] = [
   {
     label: "configure.ts",
     language: "typescript",
-    code: `import { Praxis, GenericAdapter } from "@allen-saji/praxis";
+    code: `import { Praxis, GenericAdapter, makeSuiClient } from "@allen-saji/praxis";
 
 // Connect a signer implementing the wallet adapter interface.
 // Isolate the signing key from your agent runtime.
 const wallet = new GenericAdapter({
   address: async () => signerAddress,
-  signTransaction: async (tx) => signer.sign(tx),
+  client: makeSuiClient("testnet"),
+  sign: async (bytes) => signer.sign(bytes),
 });
 
 const praxis = new Praxis({ wallet, network: "testnet" });`,
