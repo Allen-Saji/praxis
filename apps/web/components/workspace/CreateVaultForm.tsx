@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, type FormEvent } from "react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { submitOwnerTransaction } from "@/lib/owner-transaction.client";
 import { useRouter } from "next/navigation";
 import { buildCreateVault } from "@allen-saji/praxis/vault";
 import { Button } from "@/components/primitives/Button";
@@ -9,7 +10,7 @@ import { toMist } from "@/lib/workspace-display";
 const inputClass = "focus-ring min-h-11 w-full rounded-[var(--r-sm)] border border-[var(--border-hi)] bg-[var(--bg)] px-3 text-sm";
 export function CreateVaultForm({ organizationId, packageId, ownerAddress }: { organizationId: string; packageId: string; ownerAddress: string }) {
   const account = useCurrentAccount();
-  const signer = useSignAndExecuteTransaction();
+  const signer = useSignAndExecuteTransaction({ execute: submitOwnerTransaction });
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);

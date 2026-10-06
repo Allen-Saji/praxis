@@ -2,13 +2,14 @@
 import { useState, type FormEvent } from "react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
+import { submitOwnerTransaction } from "@/lib/owner-transaction.client";
 import { useRouter } from "next/navigation";
 import { buildAuthorizeVaultAgent, buildRevokeVaultAgent } from "@allen-saji/praxis/vault";
 import { toMist } from "@/lib/workspace-display";
 import { Button } from "@/components/primitives/Button";
 const field = "focus-ring min-h-11 w-full rounded border border-[var(--border)] bg-[var(--bg)] px-3 text-sm";
 export function VaultAgentControls({ organizationId, assignmentId, owner, vaultId, packageId, agent, hasGrant }: { organizationId: string; assignmentId: string; owner: string; vaultId: string; packageId: string; agent: string; hasGrant: boolean | null }) {
-  const account = useCurrentAccount(); const signer = useSignAndExecuteTransaction(); const router = useRouter();
+  const account = useCurrentAccount(); const signer = useSignAndExecuteTransaction({ execute: submitOwnerTransaction }); const router = useRouter();
   const [pending, setPending] = useState(false); const [error, setError] = useState<string | null>(null); const [digest, setDigest] = useState<string | null>(null); const [activated, setActivated] = useState(false);
   const connected = account?.address === owner;
   async function run(form: FormData | null) {

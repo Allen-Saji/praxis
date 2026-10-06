@@ -1,13 +1,14 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { submitOwnerTransaction } from "@/lib/owner-transaction.client";
 import { useRouter } from "next/navigation";
 import { buildDepositVault, buildWithdrawVault, buildSetVaultPaused, buildSetVaultWindowLimits } from "@allen-saji/praxis/vault";
 import { toMist } from "@/lib/workspace-display";
 import { Button } from "@/components/primitives/Button";
 const inputClass = "focus-ring min-h-11 w-full rounded border border-[var(--border)] bg-[var(--bg)] px-3 text-sm";
 export function VaultOwnerControls({ packageId, vaultId, owner, paused }: { packageId: string; vaultId: string; owner: string; paused: boolean }) {
-  const account = useCurrentAccount(); const signer = useSignAndExecuteTransaction(); const router = useRouter();
+  const account = useCurrentAccount(); const signer = useSignAndExecuteTransaction({ execute: submitOwnerTransaction }); const router = useRouter();
   const [pending, setPending] = useState(false); const [error, setError] = useState<string | null>(null); const [digest, setDigest] = useState<string | null>(null);
   const connected = account?.address === owner;
   async function run(action: "deposit" | "withdraw" | "pause" | "windows", form?: FormData) {
