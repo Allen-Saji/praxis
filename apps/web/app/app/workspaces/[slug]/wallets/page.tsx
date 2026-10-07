@@ -6,7 +6,6 @@ import { workspaceRepository } from "@/lib/control-plane.server";
 import { requireOwnerSession } from "@/lib/workspace-view.server";
 import { walletBudget } from "@/lib/workspace-model";
 import { shortAddress, sui } from "@/lib/workspace-display";
-import { RegisterWalletForm } from "@/components/workspace/WorkspaceControls";
 import { Panel, StatePill, WorkspaceFrame } from "@/components/workspace/WorkspaceFrame";
 export const dynamic = "force-dynamic";
 export default async function Wallets({ params }: { params: Promise<{ slug: string }> }) {
@@ -15,7 +14,6 @@ export default async function Wallets({ params }: { params: Promise<{ slug: stri
   try { packageId = vaultPackageId(); } catch { /* Vault rollout is not configured. */ }
   return <WorkspaceFrame slug={slug} name={data.organization.name} title="Wallets" description="Shared spending limits for your agents.">
     {data.wallets.map((wallet) => { const budget = walletBudget(data, wallet.id, "day"); return <Link key={wallet.id} href={`/app/workspaces/${slug}/wallets/${wallet.id}`} className="focus-ring flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5"><span><span className="block font-semibold">{wallet.label}</span><span className="mt-2 block font-mono text-xs text-[var(--text-low)]">{shortAddress(wallet.suiAddress)}</span></span><span className="text-sm">{budget.available === null ? "Set spending limits" : `${sui(budget.available)} SUI available today`}</span><StatePill value={wallet.executionStatus} /></Link>; })}
-    {packageId ? <Panel title="Create your spending vault"><CreateVaultForm organizationId={data.organization.id} packageId={packageId} ownerAddress={session.user.primarySuiAddress} /></Panel> : null}
-    {!packageId && !data.wallets.length ? <Panel title="Add a wallet"><RegisterWalletForm organizationId={data.organization.id} /></Panel> : <details className="rounded-xl border border-[var(--border)] p-5"><summary className="focus-ring cursor-pointer text-sm font-medium">{packageId ? "Legacy demo wallet" : "Add wallet"}</summary><div className="mt-5 max-w-lg"><RegisterWalletForm organizationId={data.organization.id} /></div></details>}
+    {packageId ? <Panel title="Create your spending vault"><CreateVaultForm organizationId={data.organization.id} packageId={packageId} ownerAddress={session.user.primarySuiAddress} /></Panel> : <Panel title="Vault setup unavailable"><p className="text-sm text-[var(--text-mid)]">New vault creation is temporarily unavailable. Please try again later.</p></Panel>}
   </WorkspaceFrame>;
 }
