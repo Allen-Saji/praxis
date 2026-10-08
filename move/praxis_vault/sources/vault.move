@@ -122,7 +122,7 @@ public fun create(
     event::emit(VaultCreated { vault: object::id(&vault), owner: vault.owner });
     transfer::share_object(vault);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 public fun deposit(vault: &mut Vault, payment: Coin<SUI>, ctx: &TxContext) {
     assert_owner(vault, ctx);
     let amount = coin::value(&payment);
@@ -148,6 +148,7 @@ public fun withdraw(vault: &mut Vault, amount: u64, ctx: &mut TxContext) {
     });
 }
 
+#[allow(lint(prefer_mut_tx_context))]
 public fun set_policy(
     vault: &mut Vault, per_payment: u64, allowance: u64,
     recipients: vector<address>, ctx: &TxContext,
@@ -160,7 +161,7 @@ public fun set_policy(
     vault.version = vault.version + 1;
     emit_vault(vault);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 /// Window updates invalidate pending requests and preserve current usage.
 public fun set_window_limits(vault: &mut Vault, daily: u64, monthly: u64, ctx: &TxContext) {
     assert_owner(vault, ctx);
@@ -168,7 +169,7 @@ public fun set_window_limits(vault: &mut Vault, daily: u64, monthly: u64, ctx: &
     vault.version = vault.version + 1;
     emit_vault(vault);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 public fun set_agent_window_limits(vault: &mut Vault, agent: address, daily: u64, monthly: u64, ctx: &TxContext) {
     assert_owner(vault, ctx);
     assert!(table::contains(&vault.grants, agent), ENoGrant);
@@ -177,14 +178,14 @@ public fun set_agent_window_limits(vault: &mut Vault, agent: address, daily: u64
     grant.version = grant.version + 1;
     emit_grant(vault, agent);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 public fun set_paused(vault: &mut Vault, paused: bool, ctx: &TxContext) {
     assert_owner(vault, ctx);
     vault.paused = paused;
     vault.version = vault.version + 1;
     emit_vault(vault);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 public fun authorize(
     vault: &mut Vault, agent: address, delegate: address,
     per_payment: u64, allowance: u64, recipients: vector<address>,
@@ -199,7 +200,7 @@ public fun authorize(
     });
     emit_grant(vault, agent);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 public fun update_grant(
     vault: &mut Vault, agent: address, delegate: address,
     per_payment: u64, allowance: u64, recipients: vector<address>,
@@ -218,7 +219,7 @@ public fun update_grant(
     grant.version = grant.version + 1;
     emit_grant(vault, agent);
 }
-
+#[allow(lint(prefer_mut_tx_context))]
 public fun revoke(vault: &mut Vault, agent: address, ctx: &TxContext) {
     assert_owner(vault, ctx);
     assert!(table::contains(&vault.grants, agent), ENoGrant);
