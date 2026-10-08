@@ -112,7 +112,7 @@ public fun record_abort(
 
 fun push(t: &mut Table<address, vector<ID>>, key: address, id: ID) {
     if (!table::contains(t, key)) {
-        table::add(t, key, vector::empty<ID>());
+        table::add(t, key, vector<ID>[]);
     };
     let v = table::borrow_mut(t, key);
     vector::push_back(v, id);
@@ -120,7 +120,7 @@ fun push(t: &mut Table<address, vector<ID>>, key: address, id: ID) {
 
 fun push_day(t: &mut Table<u32, vector<ID>>, key: u32, id: ID) {
     if (!table::contains(t, key)) {
-        table::add(t, key, vector::empty<ID>());
+        table::add(t, key, vector<ID>[]);
     };
     let v = table::borrow_mut(t, key);
     vector::push_back(v, id);
